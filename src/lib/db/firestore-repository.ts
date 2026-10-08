@@ -137,6 +137,25 @@ export class FirestoreRepository implements ISocietyRepository {
     return membership;
   }
 
+  async updateMembership(
+    societyId: string,
+    userId: string,
+    updates: Partial<SocietyMembership>
+  ): Promise<SocietyMembership> {
+    const ref = this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('members')
+      .doc(userId);
+    await ref.update({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+    const updated = await this.getMembership(societyId, userId);
+    if (!updated) throw new Error('Membership not found');
+    return updated;
+  }
+
   async updateMembershipStatus(
     societyId: string,
     userId: string,

@@ -144,7 +144,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
         {step === 'PHONE' ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">
+              <label className="text-xs font-bold text-slate-800 block mb-1">
                 Mobile Number (+91)
               </label>
               <input
@@ -153,21 +153,21 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98111 22233"
-                className="w-full text-xs p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 bg-white"
+                className="w-full text-sm font-semibold p-3 rounded-xl border-2 border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 bg-white text-slate-900 placeholder:text-slate-400 outline-none transition-all"
               />
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-semibold hover:bg-zinc-50"
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 flex items-center justify-center gap-1"
+                className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send OTP'}
               </button>
@@ -176,7 +176,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">
+              <label className="text-xs font-bold text-slate-800 block mb-1">
                 6-Digit OTP Code
               </label>
               <input
@@ -186,21 +186,21 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
                 placeholder="123456"
-                className="w-full text-center tracking-widest text-base font-mono font-bold p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 bg-white"
+                className="w-full text-center tracking-[0.5em] text-xl font-mono font-extrabold p-3 rounded-xl border-2 border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 bg-white text-slate-950 placeholder:text-slate-300 outline-none transition-all shadow-inner"
               />
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setStep('PHONE')}
-                className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-semibold hover:bg-zinc-50"
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Back
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center justify-center gap-1"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Continue'}
               </button>

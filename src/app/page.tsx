@@ -25,6 +25,8 @@ import { PublicJourneyView } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { SplashScreen } from '@/components/SplashScreen';
+import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
+import { AppHubScreen } from '@/components/AppHubScreen';
 
 export default function HomePage() {
   const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
@@ -33,6 +35,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [requestStatusMap, setRequestStatusMap] = useState<Record<string, string>>({});
   const [showOtpModal, setShowOtpModal] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const isApproved = membership?.status === 'ACTIVE';
 
@@ -103,13 +107,33 @@ export default function HomePage() {
 
   const firstName = user?.fullName.split(' ')[0] || 'Resident';
 
-  // Requirement 2: First Screen is Splash Screen flashing product and below that Login or Sign Up
+  // Step 1: First Screen is Splash Screen flashing product and below that Login or Sign Up
   if (!isLoading && !isAuthenticated) {
     return <SplashScreen />;
   }
 
+  // Step 2: Post Login, App flow is Splash Screen -> Select App (RideShare)
+  if (!isLoading && isAuthenticated && selectedApp !== 'rideshare') {
+    return (
+      <AppHubScreen
+        onSelectApp={(appId) => {
+          setSelectedApp(appId);
+        }}
+      />
+    );
+  }
+
+  const needsOnboarding = user && user.fullName === 'Resident Member' && !user.profileCompleted;
+
   return (
     <div className="flex-1 flex flex-col pb-8">
+      {/* First-time Resident Profile Fill-in Modal (Requirement 2) */}
+      <ResidentOnboardingModal
+        isOpen={needsOnboarding || showOnboarding}
+        onCompleted={() => {
+          setShowOnboarding(false);
+        }}
+      />
       {/* Header */}
       <header className="p-5 bg-gradient-to-b from-white via-white to-slate-50/80 border-b border-slate-200/80">
         <div className="flex items-center justify-between">
@@ -161,36 +185,28 @@ export default function HomePage() {
             </span>
             <span className="text-[10px] font-medium text-slate-400">Sets your default view</span>
           </div>
-          <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+          <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
             <button
               onClick={() => updateCommuteIntent('OFFERER')}
-              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 user?.commuteIntent === 'OFFERER'
                   ? 'bg-emerald-600 text-white shadow-sm font-bold'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
-              🚗 Offer Rides
+              <Car className="w-4 h-4" />
+              <span>Offer Rides</span>
             </button>
             <button
               onClick={() => updateCommuteIntent('SEEKER')}
-              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
-                user?.commuteIntent === 'SEEKER'
+              className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                user?.commuteIntent === 'SEEKER' || !user?.commuteIntent
                   ? 'bg-slate-900 text-white shadow-sm font-bold'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
-              🔍 Find Rides
-            </button>
-            <button
-              onClick={() => updateCommuteIntent('BOTH')}
-              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
-                user?.commuteIntent === 'BOTH' || !user?.commuteIntent
-                  ? 'bg-emerald-800 text-white shadow-sm font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
-              }`}
-            >
-              ✨ Both
+              <Search className="w-4 h-4" />
+              <span>Find Rides</span>
             </button>
           </div>
         </div>

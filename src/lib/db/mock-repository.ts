@@ -585,6 +585,19 @@ export class MockDynamoRepository implements ISocietyRepository {
     return membership;
   }
 
+  async updateMembership(
+    societyId: string,
+    userId: string,
+    updates: Partial<SocietyMembership>
+  ): Promise<SocietyMembership> {
+    const key = `${societyId}#${userId}`;
+    const m = this.memberships.get(key);
+    if (!m) throw new Error('Membership not found');
+    const updated = { ...m, ...updates, updatedAt: new Date().toISOString() };
+    this.memberships.set(key, updated);
+    return updated;
+  }
+
   async updateMembershipStatus(
     societyId: string,
     userId: string,

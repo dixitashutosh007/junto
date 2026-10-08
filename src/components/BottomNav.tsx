@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Car, Clock, ShieldCheck } from 'lucide-react';
+import { Home, Search, Car, Clock, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function BottomNav() {
@@ -20,6 +20,7 @@ export function BottomNav() {
     { label: 'Find', href: '/rides/find', icon: Search },
     { label: 'Offer', href: '/rides/offer', icon: Car },
     { label: 'My Activity', href: '/rides/my-rides', icon: Clock },
+    { label: 'Profile', href: '/profile', icon: User },
     ...(isAdmin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
   ];
 

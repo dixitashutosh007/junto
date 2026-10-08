@@ -44,6 +44,8 @@ export interface User {
   workLatitude?: number;
   workLongitude?: number;
   profilePhotoUrl?: string;
+  profileCompleted?: boolean;
+  emailVerified?: boolean;
   createdAt: string;
 }
 

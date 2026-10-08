@@ -37,6 +37,11 @@ export interface ISocietyRepository {
 
   getMembership(societyId: string, userId: string): Promise<SocietyMembership | null>;
   createMembership(membership: SocietyMembership): Promise<SocietyMembership>;
+  updateMembership(
+    societyId: string,
+    userId: string,
+    updates: Partial<SocietyMembership>
+  ): Promise<SocietyMembership>;
   updateMembershipStatus(
     societyId: string,
     userId: string,
