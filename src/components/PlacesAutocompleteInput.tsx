@@ -67,10 +67,36 @@ export function PlacesAutocompleteInput({
     }
   };
 
-  const handleSelectSuggestion = (item: PlaceSuggestion) => {
+  const handleSelectSuggestion = async (item: PlaceSuggestion) => {
     setQuery(item.primaryText);
-    onChange(item.primaryText, item);
     setIsOpen(false);
+
+    // If item already has non-default coordinates, return immediately
+    if (item.lat !== 12.9716 || item.lng !== 77.5946) {
+      onChange(item.primaryText, item);
+      return;
+    }
+
+    // Resolve exact geocode details
+    try {
+      const res = await fetch(`/api/v1/places/autocomplete?placeId=${encodeURIComponent(item.placeId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.location) {
+          onChange(item.primaryText, {
+            ...item,
+            lat: data.location.lat,
+            lng: data.location.lng,
+            secondaryText: data.location.formattedAddress || item.secondaryText,
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Place details resolution error', e);
+    }
+
+    onChange(item.primaryText, item);
   };
 
   const handleClear = () => {

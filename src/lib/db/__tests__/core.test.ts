@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MockDynamoRepository } from '../mock-repository';
-import { evaluateCommuteMatch } from '../../services/matching';
+import { evaluateCommuteMatch, estimateDetourMinutes } from '../../services/matching';
 import { formatPublicJourneyView } from '../../services/privacy';
 import { RideOccurrence, User, Vehicle } from '@/types';
 
@@ -351,6 +351,28 @@ describe('SocietyApps V1 Core Test Suite', () => {
 
       expect(approved.status).toBe('ACTIVE');
       expect(approved.approvedBy).toBe('usr-admin-001');
+    });
+  });
+
+  describe('7. Production Google Places & Route Detour Matrix', () => {
+    it('verifies Bangalore hubs dataset coverage and detour calculations', () => {
+      // Origin: Mahaveer Ranches (Hosa Road)
+      const ranchesGate = { lat: 12.8715, lng: 77.6534 };
+      // Destination: Manyata Tech Park (Hebbal / Nagavara)
+      const manyata = { lat: 13.0500, lng: 77.6200 };
+      // Waypoint: Silk Board Junction (along direct corridor)
+      const silkBoard = { lat: 12.9177, lng: 77.6238 };
+      const silkBoardDrop = { lat: 13.0450, lng: 77.6210 };
+
+      const detourOnRoute = estimateDetourMinutes(ranchesGate, manyata, silkBoard, silkBoardDrop);
+      // Silk Board is directly on the way from Hosa Road to Manyata; detour must be small (< 10 mins)
+      expect(detourOnRoute).toBeLessThanOrEqual(10);
+
+      // Waypoint: Banashankari / West (Significant westward deviation)
+      const westPickup = { lat: 12.9180, lng: 77.5300 };
+      const westDrop = { lat: 12.9600, lng: 77.5100 };
+      const detourOutOffRoute = estimateDetourMinutes(ranchesGate, manyata, westPickup, westDrop);
+      expect(detourOutOffRoute).toBeGreaterThan(10);
     });
   });
 });
