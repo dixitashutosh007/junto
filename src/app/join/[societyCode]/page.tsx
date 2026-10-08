@@ -13,12 +13,17 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
   const [flatNumber, setFlatNumber] = useState('');
   const [workLocation, setWorkLocation] = useState('');
   const [gender, setGender] = useState('MALE');
+  const [agreedToRules, setAgreedToRules] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToRules) {
+      setError('Please review and accept the community carpool rules and legal terms.');
+      return;
+    }
     setIsSubmitting(true);
     setError('');
 
@@ -161,6 +166,32 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
               placeholder="e.g. Manyata Tech Park, Hebbal"
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
             />
+          </div>
+
+          {/* Society Rules & Legal Disclaimer */}
+          <div className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-2xl space-y-2 text-xs">
+            <div className="flex items-center gap-2 text-zinc-900 font-bold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Society Guidelines & Platform Disclaimer</span>
+            </div>
+            <p className="text-[11px] text-zinc-600 leading-relaxed bg-white p-2.5 rounded-xl border border-zinc-200">
+              Residents commit to mutual punctuality, respect, civil conduct, and safety during all shared commutes.
+            </p>
+            <div className="text-[10px] text-zinc-500 leading-normal p-2 bg-amber-50/70 rounded-xl border border-amber-200">
+              <strong className="text-zinc-800">Legal Notice:</strong> Junto is an independent residential peer matchmaking facilitation tool. Junto and the Society Management Committee do not provide transportation or taxi services, employ no drivers, and possess zero liability or obligation for any rides, vehicle conditions, delays, or road incidents.
+            </div>
+            <label className="flex items-start gap-2 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                required
+                checked={agreedToRules}
+                onChange={(e) => setAgreedToRules(e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span className="text-[11px] font-semibold text-zinc-800">
+                I agree to the society carpool rules and acknowledge Junto&apos;s non-liability peer facilitation status.
+              </span>
+            </label>
           </div>
 
           <div className="mt-auto pt-4">

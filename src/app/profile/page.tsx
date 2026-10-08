@@ -49,6 +49,20 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Phone Change Verification State
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const [phoneOtpStep, setPhoneOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
+
+  // Email Change Verification State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailOtpStep, setEmailOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
+  const [emailOtpCode, setEmailOtpCode] = useState('');
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+
   useEffect(() => {
     if (user) {
       setFullName(user.fullName || '');
@@ -172,6 +186,108 @@ export default function ProfilePage() {
     }
   };
 
+  // Verified Phone Change Handler
+  const handleSendPhoneOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPhoneInput.trim() || newPhoneInput.length < 10) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid 10-digit mobile number' });
+      return;
+    }
+    setPhoneOtpStep('OTP');
+    setStatusMessage({ type: 'success', text: `Verification code sent to ${newPhoneInput}` });
+  };
+
+  const handleConfirmPhoneChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneOtpCode.trim() || phoneOtpCode.length < 4) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid OTP code' });
+      return;
+    }
+
+    try {
+      setVerifyingPhone(true);
+      const formattedPhone = newPhoneInput.startsWith('+91') ? newPhoneInput : `+91 ${newPhoneInput.replace(/^\+91/, '').trim()}`;
+      const res = await fetch('/api/v1/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-id': activePersona,
+          'x-society-id': 'soc-ggh-001',
+        },
+        body: JSON.stringify({
+          mobile: formattedPhone,
+        }),
+      });
+
+      if (res.ok) {
+        setShowPhoneModal(false);
+        setPhoneOtpStep('INPUT');
+        setPhoneOtpCode('');
+        setNewPhoneInput('');
+        await refreshAuth();
+        setStatusMessage({ type: 'success', text: 'Mobile number verified and updated successfully!' });
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update phone number');
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Error verifying phone number' });
+    } finally {
+      setVerifyingPhone(false);
+    }
+  };
+
+  // Verified Email Change Handler
+  const handleSendEmailOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmailInput.trim() || !newEmailInput.includes('@')) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid email address' });
+      return;
+    }
+    setEmailOtpStep('OTP');
+    setStatusMessage({ type: 'success', text: `Verification code sent to ${newEmailInput}` });
+  };
+
+  const handleConfirmEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailOtpCode.trim() || emailOtpCode.length < 4) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid verification code' });
+      return;
+    }
+
+    try {
+      setVerifyingEmail(true);
+      const res = await fetch('/api/v1/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-id': activePersona,
+          'x-society-id': 'soc-ggh-001',
+        },
+        body: JSON.stringify({
+          email: newEmailInput.trim().toLowerCase(),
+        }),
+      });
+
+      if (res.ok) {
+        setEmail(newEmailInput.trim().toLowerCase());
+        setShowEmailModal(false);
+        setEmailOtpStep('INPUT');
+        setEmailOtpCode('');
+        setNewEmailInput('');
+        await refreshAuth();
+        setStatusMessage({ type: 'success', text: 'Email address verified and updated successfully!' });
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update email');
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Error verifying email address' });
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
   const isApproved = membership?.status === 'ACTIVE';
 
   return (
@@ -271,28 +387,53 @@ export default function ProfilePage() {
                 Phone Auth Verified
               </span>
             </label>
-            <input
-              type="text"
-              disabled
-              value={user?.mobile || '+91 98111 22233'}
-              className="w-full text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                disabled
+                value={user?.mobile || '+91 98111 22233'}
+                className="flex-1 text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setNewPhoneInput('');
+                  setPhoneOtpStep('INPUT');
+                  setShowPhoneModal(true);
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition-colors"
+              >
+                Change
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
               <span>Email Address</span>
-              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                 Verification Required
               </span>
             </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
-            />
+            <div className="flex gap-2">
+              <input
+                type="email"
+                disabled
+                value={email}
+                className="flex-1 text-xs font-semibold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setNewEmailInput('');
+                  setEmailOtpStep('INPUT');
+                  setShowEmailModal(true);
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition-colors"
+              >
+                Change
+              </button>
+            </div>
           </div>
 
           <div>
@@ -307,9 +448,14 @@ export default function ProfilePage() {
               required
               value={flatNumber}
               onChange={(e) => setFlatNumber(e.target.value)}
-              placeholder="e.g. Tower B - 804"
+              placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
               className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
             />
+            {society?.settings?.flat_format_example && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                Configured society format: <span className="font-semibold text-slate-700">{society.settings.flat_format_example}</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -541,6 +687,160 @@ export default function ProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* VERIFY PHONE CHANGE MODAL */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Mobile Number</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              All resident mobile numbers require instant SMS OTP verification for community security.
+            </p>
+
+            {phoneOtpStep === 'INPUT' ? (
+              <form onSubmit={handleSendPhoneOtp} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">New Mobile Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={newPhoneInput}
+                    onChange={(e) => setNewPhoneInput(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full text-xs font-bold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPhoneModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                  >
+                    Send OTP
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmPhoneChange} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Enter OTP sent to {newPhoneInput}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={phoneOtpCode}
+                    onChange={(e) => setPhoneOtpCode(e.target.value)}
+                    placeholder="Enter 6-digit OTP (e.g. 123456)"
+                    className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Dev test code: 123456</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneOtpStep('INPUT')}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={verifyingPhone}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
+                  >
+                    {verifyingPhone ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Save'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* VERIFY EMAIL CHANGE MODAL */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Email Address</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              All resident emails require confirmation code verification to prevent unauthorized updates.
+            </p>
+
+            {emailOtpStep === 'INPUT' ? (
+              <form onSubmit={handleSendEmailOtp} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">New Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={newEmailInput}
+                    onChange={(e) => setNewEmailInput(e.target.value)}
+                    placeholder="resident@workplace.com"
+                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                  >
+                    Send Code
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmEmailChange} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Enter Verification Code sent to {newEmailInput}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={emailOtpCode}
+                    onChange={(e) => setEmailOtpCode(e.target.value)}
+                    placeholder="Enter 6-digit code (e.g. 123456)"
+                    className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Verification code: 123456</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEmailOtpStep('INPUT')}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={verifyingEmail}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
+                  >
+                    {verifyingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Save'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

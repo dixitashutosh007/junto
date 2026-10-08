@@ -45,15 +45,15 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
         {/* Product Suite & App Name */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase mb-2">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>SocietyApps Suite</span>
+          <span>Junto Community Suite</span>
         </div>
 
         <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-          Saath <span className="text-emerald-400">RideShare</span>
+          Junto <span className="text-emerald-400">RideShare</span>
         </h1>
 
         <p className="text-sm text-slate-300 max-w-xs leading-relaxed font-normal">
-          Community-driven carpool facilitation exclusively for verified residents of{' '}
+          Peer-to-peer co-commute facilitation exclusively for verified residents of{' '}
           <span className="text-white font-semibold">{society?.name || 'Mahaveer Ranches'}</span>.
         </p>
       </div>

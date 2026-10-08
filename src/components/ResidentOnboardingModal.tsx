@@ -45,6 +45,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [agreedToRules, setAgreedToRules] = useState(false);
 
   if (!isOpen) return null;
 
@@ -63,6 +64,10 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
     }
     if (!flatNumber.trim()) {
       setError('Flat / Apartment number is required for society verification.');
+      return;
+    }
+    if (!agreedToRules) {
+      setError('You must review and agree to the society rules and legal peer-matchmaking terms.');
       return;
     }
 
@@ -216,11 +221,16 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                     required
                     value={flatNumber}
                     onChange={(e) => setFlatNumber(e.target.value)}
-                    placeholder="e.g. Tower B - 804"
+                    placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
                     className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
                   />
                   <Home className="w-4 h-4 text-slate-400 absolute right-3 top-3.5" />
                 </div>
+                {society?.settings?.flat_format_example && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Society format requirement: <span className="font-semibold text-slate-700">{society.settings.flat_format_example}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -381,6 +391,44 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 placeholder="e.g. Manyata Tech Park / Bellandur"
                 className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
               />
+            </div>
+
+            {/* Society Rules & Legal Matchmaking Disclaimer */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <h4 className="text-xs font-bold text-slate-900">
+                  {society?.name || 'Society'} Rules & Legal Agreement
+                </h4>
+              </div>
+
+              {society?.settings?.community_rules ? (
+                <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 max-h-24 overflow-y-auto leading-relaxed">
+                  <span className="font-semibold text-slate-800 block mb-0.5">Community Guidelines:</span>
+                  {society.settings.community_rules}
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-200">
+                  Be punctual, respectful to fellow residents, maintain safety protocols, and coordinate cancellations promptly.
+                </div>
+              )}
+
+              <div className="text-[10px] text-slate-500 leading-normal p-2 bg-amber-50/60 rounded-xl border border-amber-200/60">
+                <strong className="text-slate-800">Legal Disclaimer:</strong> Junto is strictly a peer-to-peer matchmaking directory for verified residents. Junto and the Society Management Committee do not provide transportation, do not employ drivers, do not charge commercial fares, and assume no liability for travel incidents, disputes, delays, or damages. Commuters ride entirely at their own mutual discretion.
+              </div>
+
+              <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreedToRules}
+                  onChange={(e) => setAgreedToRules(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-slate-800 leading-tight">
+                  I have read and agree to the society carpool rules and acknowledge that Junto is strictly a non-commercial match facilitation platform.
+                </span>
+              </label>
             </div>
 
             <div className="pt-2">

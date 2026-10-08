@@ -24,7 +24,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
   const apps = [
     {
       id: 'rideshare',
-      title: 'Saath RideShare',
+      title: 'Junto RideShare',
       badge: 'Active & Verified',
       icon: Car,
       color: 'from-emerald-600 to-teal-700',

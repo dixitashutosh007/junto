@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 import React, { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "SocietyApps — Ride Share",
-  description: "Community-driven commute connection for residential societies",
+  title: "Junto — Residential Co-commute & Community Hub",
+  description: "Peer-to-peer co-commute matchmaking and community network for residential societies",
 };
 
 export default function RootLayout({

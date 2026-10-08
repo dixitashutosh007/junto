@@ -5,6 +5,8 @@ export interface SocietySettings {
   require_admin_approval: boolean;
   allow_gender_preferences: boolean;
   community_rules?: string;
+  flat_format_pattern?: string; // e.g. "TOWER_FLAT" or "FLAT_ONLY" or "BLOCK_FLAT"
+  flat_format_example?: string; // e.g. "Tower A - 1202" or "#422" or "A1-1202"
 }
 
 export interface Society {

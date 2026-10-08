@@ -20,6 +20,8 @@ export async function PUT(req: NextRequest) {
     max_detour_minutes,
     require_admin_approval,
     allow_gender_preferences,
+    flat_format_pattern,
+    flat_format_example,
   } = body;
 
   const repo = getRepository();
@@ -44,6 +46,8 @@ export async function PUT(req: NextRequest) {
   if (require_admin_approval !== undefined) settingsUpdates.require_admin_approval = Boolean(require_admin_approval);
   if (allow_gender_preferences !== undefined) settingsUpdates.allow_gender_preferences = Boolean(allow_gender_preferences);
   if (community_rules !== undefined) settingsUpdates.community_rules = community_rules;
+  if (flat_format_pattern !== undefined) settingsUpdates.flat_format_pattern = flat_format_pattern;
+  if (flat_format_example !== undefined) settingsUpdates.flat_format_example = flat_format_example;
 
   if (Object.keys(settingsUpdates).length > 0) {
     society = await repo.updateSocietySettings(auth.societyId, settingsUpdates);

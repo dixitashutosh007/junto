@@ -61,6 +61,14 @@ export default function AdminPage() {
     society?.settings?.allow_gender_preferences !== false
   );
 
+  // Tower & Flat Listing Format State (Requirement 4)
+  const [flatFormatPattern, setFlatFormatPattern] = useState(
+    society?.settings?.flat_format_pattern || 'TOWER_FLAT'
+  );
+  const [flatFormatExample, setFlatFormatExample] = useState(
+    society?.settings?.flat_format_example || 'Tower A - 1202'
+  );
+
   const [message, setMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -128,6 +136,8 @@ export default function AdminPage() {
       setSocietyLng(society.longitude);
       setCommunityRules(society.settings.community_rules || '');
       setMaxDetour(society.settings.max_detour_minutes || 10);
+      if (society.settings.flat_format_pattern) setFlatFormatPattern(society.settings.flat_format_pattern);
+      if (society.settings.flat_format_example) setFlatFormatExample(society.settings.flat_format_example);
     }
   }, [activePersona, society]);
 
@@ -202,6 +212,8 @@ export default function AdminPage() {
           latitude: Number(societyLat),
           longitude: Number(societyLng),
           community_rules: communityRules,
+          flat_format_pattern: flatFormatPattern,
+          flat_format_example: flatFormatExample,
           max_detour_minutes: maxDetour,
           require_admin_approval: requireApproval,
           allow_gender_preferences: allowGenderPref,
@@ -625,6 +637,35 @@ export default function AdminPage() {
             <p className="text-[10px] text-zinc-400 mt-1">
               These guidelines are displayed to residents before they offer or request rides.
             </p>
+          </div>
+
+          <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+            <h4 className="text-xs font-bold text-zinc-800 mb-1">Tower & Flat Format Configuration</h4>
+            <p className="text-[11px] text-zinc-500 mb-3">
+              Configure how residents should write their flat and tower numbers during registration. This pattern guides input placeholder and format.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-700 block mb-1">Format Example Placeholder</label>
+                <input
+                  type="text"
+                  value={flatFormatExample}
+                  onChange={(e) => setFlatFormatExample(e.target.value)}
+                  placeholder="e.g. Tower A - 1202 or #422"
+                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-700 block mb-1">Validation Pattern (Regex Optional)</label>
+                <input
+                  type="text"
+                  value={flatFormatPattern}
+                  onChange={(e) => setFlatFormatPattern(e.target.value)}
+                  placeholder="e.g. ^(Tower [A-Z]|#)[0-9A-Za-z -]+$"
+                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-mono text-[11px]"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="mt-auto pt-4">
