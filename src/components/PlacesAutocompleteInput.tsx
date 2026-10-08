@@ -1,0 +1,147 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { PlaceSuggestion } from '@/lib/services/places-data';
+
+interface PlacesAutocompleteInputProps {
+  value: string;
+  onChange: (value: string, suggestion?: PlaceSuggestion) => void;
+  placeholder?: string;
+  label?: string;
+  required?: boolean;
+}
+
+export function PlacesAutocompleteInput({
+  value,
+  onChange,
+  placeholder = 'Search destination (e.g. Manyata, Bagmane, ITPL...)',
+  label = 'Destination Hub',
+  required = false,
+}: PlacesAutocompleteInputProps) {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = async (searchQuery: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/v1/places/autocomplete?q=${encodeURIComponent(searchQuery)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data.suggestions || []);
+        setIsOpen(true);
+      }
+    } catch (e) {
+      console.error('Failed to load places suggestions', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setQuery(val);
+    onChange(val);
+    if (val.trim().length > 1) {
+      fetchSuggestions(val);
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSelectSuggestion = (item: PlaceSuggestion) => {
+    setQuery(item.primaryText);
+    onChange(item.primaryText, item);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    onChange('');
+    setSuggestions([]);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative w-full space-y-1">
+      {label && <label className="text-xs font-semibold text-zinc-700 block">{label}</label>}
+
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+          <MapPin className="w-4 h-4 text-emerald-600" />
+        </div>
+
+        <input
+          type="text"
+          required={required}
+          value={query}
+          onFocus={() => {
+            if (suggestions.length > 0) setIsOpen(true);
+            else fetchSuggestions(query);
+          }}
+          onChange={handleInputChange}
+          placeholder={placeholder}
+          className="w-full text-xs pl-9 pr-8 py-2.5 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+        />
+
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />}
+          {query && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Autocomplete Dropdown */}
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg text-xs">
+          <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+            Suggested Tech Parks & Hubs
+          </div>
+          {suggestions.map((item) => (
+            <button
+              key={item.placeId}
+              type="button"
+              onClick={() => handleSelectSuggestion(item)}
+              className="w-full text-left px-3 py-2.5 hover:bg-emerald-50/80 flex items-start gap-2.5 border-b border-zinc-100 last:border-b-0 transition-colors"
+            >
+              <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="truncate">
+                <span className="font-semibold text-zinc-900 block truncate">
+                  {item.primaryText}
+                </span>
+                <span className="text-[10px] text-zinc-500 block truncate">
+                  {item.secondaryText}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,20 @@
+{
+  "appId": "com.societyapps.rideshare",
+  "appName": "SocietyApps",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#059669",
+      "showSpinner": false
+    }
+  }
+}

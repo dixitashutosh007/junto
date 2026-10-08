@@ -1,0 +1,284 @@
+export type SocietyStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface SocietySettings {
+  max_detour_minutes: number;
+  require_admin_approval: boolean;
+  allow_gender_preferences: boolean;
+  community_rules?: string;
+}
+
+export interface Society {
+  id: string; // UUID
+  slug: string; // e.g. "mahaveer-ranches"
+  name: string; // e.g. "Mahaveer Ranches"
+  code: string; // e.g. "MR2024" for join URL
+  address: string;
+  latitude: number;
+  longitude: number;
+  settings: SocietySettings;
+  status: SocietyStatus;
+  createdAt: string;
+}
+
+export type MembershipRole = 'RESIDENT' | 'SOCIETY_ADMIN' | 'SUPER_ADMIN';
+
+export type MembershipStatus =
+  | 'INVITED'
+  | 'REGISTERED'
+  | 'PENDING_APPROVAL'
+  | 'ACTIVE'
+  | 'REJECTED'
+  | 'SUSPENDED'
+  | 'DEACTIVATED';
+
+export interface User {
+  id: string;
+  cognitoSub: string;
+  email: string;
+  mobile: string;
+  fullName: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+  workLocationName?: string;
+  workLatitude?: number;
+  workLongitude?: number;
+  profilePhotoUrl?: string;
+  createdAt: string;
+}
+
+export interface SocietyMembership {
+  id: string;
+  societyId: string;
+  userId: string;
+  flatNumber: string;
+  role: MembershipRole;
+  status: MembershipStatus;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VehicleType = 'CAR' | 'SUV' | 'HATCHBACK' | 'SEDAN' | 'TWO_WHEELER';
+
+export interface Vehicle {
+  id: string;
+  societyId: string;
+  userId: string;
+  type: VehicleType;
+  make: string; // e.g. "Hyundai"
+  model: string; // e.g. "Creta"
+  color: string; // e.g. "Polar White"
+  registrationNumber: string; // e.g. "KA-04-MB-1234"
+  capacity: number; // e.g. 4
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type CommuteDirection = 'OUTBOUND_SOCIETY' | 'INBOUND_SOCIETY';
+export type GenderPreference = 'ANY' | 'FEMALE_ONLY' | 'MALE_ONLY';
+export type RideVisibility = 'SOCIETY_WIDE' | 'MATCH_ONLY';
+
+export interface RideSchedule {
+  id: string;
+  societyId: string;
+  userId: string;
+  vehicleId: string;
+  direction: CommuteDirection;
+  originName: string;
+  originLat: number;
+  originLng: number;
+  destinationName: string;
+  destinationPlaceId: string;
+  destinationLat: number;
+  destinationLng: number;
+  departureWindowStart: string; // "08:00"
+  departureWindowEnd: string; // "08:20"
+  recurrenceDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri
+  totalSeats: number;
+  genderPreference: GenderPreference;
+  visibility: RideVisibility;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type JourneyStatus =
+  | 'OPEN'
+  | 'PARTIALLY_BOOKED'
+  | 'FULL'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+export interface RideOccurrence {
+  id: string;
+  societyId: string;
+  scheduleId?: string;
+  offererUserId: string;
+  vehicleId: string;
+  journeyDate: string; // "YYYY-MM-DD"
+  direction: CommuteDirection;
+  departureWindowStart: string; // ISO
+  departureWindowEnd: string; // ISO
+  originName: string;
+  originLat: number;
+  originLng: number;
+  destinationName: string;
+  destinationPlaceId: string;
+  destinationLat: number;
+  destinationLng: number;
+  baselineDurationMinutes: number;
+  baselineDistanceKm: number;
+  totalSeats: number;
+  availableSeats: number;
+  genderPreference: GenderPreference;
+  visibility: RideVisibility;
+  status: JourneyStatus;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RequestStatus =
+  | 'REQUESTED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'WITHDRAWN';
+
+export interface RideRequest {
+  id: string;
+  societyId: string;
+  journeyId: string;
+  seekerUserId: string;
+  requestedSeats: number;
+  pickupName: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffName: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  calculatedDetourMinutes: number;
+  status: RequestStatus;
+  responseNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MatchQualityLabel = 'EXCELLENT' | 'GOOD' | 'POSSIBLE';
+
+export interface CommuteMatch {
+  id: string;
+  societyId: string;
+  journeyId: string;
+  seekerUserId: string;
+  qualityScore: number; // 0-100
+  qualityLabel: MatchQualityLabel;
+  detourMinutes: number;
+  timeOverlapMinutes: number;
+  status: 'NEW' | 'NOTIFIED' | 'DISMISSED' | 'REQUESTED';
+  createdAt: string;
+}
+
+export type JourneyOutcome =
+  | 'COMPLETED'
+  | 'DRIVER_CANCELLED'
+  | 'PASSENGER_CANCELLED'
+  | 'PASSENGER_NO_SHOW'
+  | 'DRIVER_NO_SHOW'
+  | 'OTHER';
+
+export interface Feedback {
+  id: string;
+  societyId: string;
+  journeyId: string;
+  fromUserId: string;
+  toUserId: string;
+  role: 'OFFERER' | 'SEEKER';
+  outcome: JourneyOutcome;
+  qualitativeTags: string[]; // e.g. ["Punctual & Reliable", "Comfortable Ride"]
+  privateNote?: string;
+  createdAt: string;
+}
+
+export interface ModerationReport {
+  id: string;
+  societyId: string;
+  journeyId?: string;
+  reporterId: string;
+  reportedUserId: string;
+  category:
+    | 'INAPPROPRIATE_BEHAVIOUR'
+    | 'MISREPRESENTATION'
+    | 'REPEATED_CANCELLATION'
+    | 'NO_SHOW'
+    | 'SAFETY_CONCERN'
+    | 'HARASSMENT'
+    | 'OTHER';
+  description: string;
+  status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'DISMISSED';
+  resolutionNotes?: string;
+  resolvedBy?: string;
+  createdAt: string;
+}
+
+export interface AuditEvent {
+  id: string;
+  societyId?: string;
+  actorUserId?: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata: Record<string, unknown>;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface InAppNotification {
+  id: string;
+  societyId: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: 'MATCH_FOUND' | 'RIDE_REQUESTED' | 'REQUEST_ACCEPTED' | 'REQUEST_REJECTED' | 'RIDE_CANCELLED' | 'GENERAL';
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// Client-safe views with privacy-conscious unmasking
+export interface PublicOffererProfile {
+  id: string;
+  displayName: string; // e.g. "Ashutosh D."
+  verificationBadge: 'Verified Resident';
+  workLocation?: string;
+  flatNumber?: string; // Only present if accepted
+  mobile?: string; // Only present if accepted
+}
+
+export interface PublicVehicleView {
+  make: string;
+  model: string;
+  color: string;
+  type: VehicleType;
+  registrationNumber?: string; // Only present if accepted
+}
+
+export interface PublicJourneyView {
+  id: string;
+  journeyDate: string;
+  direction: CommuteDirection;
+  departureWindowStart: string;
+  departureWindowEnd: string;
+  originName: string;
+  destinationName: string;
+  totalSeats: number;
+  availableSeats: number;
+  genderPreference: GenderPreference;
+  offerer: PublicOffererProfile;
+  vehicle: PublicVehicleView;
+  status: JourneyStatus;
+  userRequestStatus?: RequestStatus;
+}
