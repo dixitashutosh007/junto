@@ -25,6 +25,7 @@ export function formatPublicJourneyView(
   currentUserRoleInJourney?: {
     isOfferer: boolean;
     seekerRequestStatus?: RequestStatus;
+    offererFlatNumber?: string;
   }
 ): PublicJourneyView {
   const isAcceptedParticipant =
@@ -38,12 +39,14 @@ export function formatPublicJourneyView(
       ? `${nameParts[0]} ${nameParts[nameParts.length - 1].charAt(0)}.`
       : offererUser.fullName;
 
+  const resolvedFlat = currentUserRoleInJourney?.offererFlatNumber || 'Tower B-804';
+
   const offererProfile: PublicOffererProfile = {
     id: offererUser.id,
     displayName: isAcceptedParticipant ? offererUser.fullName : displayName,
     verificationBadge: 'Verified Resident',
     workLocation: offererUser.workLocationName,
-    flatNumber: isAcceptedParticipant ? 'Tower B-804' : undefined, // unmasked only if accepted
+    flatNumber: isAcceptedParticipant ? resolvedFlat : undefined, // unmasked only if accepted
     mobile: isAcceptedParticipant ? offererUser.mobile : undefined, // unmasked only if accepted
   };
 

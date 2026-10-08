@@ -36,9 +36,17 @@ export async function GET(req: NextRequest) {
       if (!offerer || !vehicle) return null;
 
       const seekerRequestStatus = requestMap.get(ride.id);
+      const isAccepted = ride.offererUserId === auth.userId || seekerRequestStatus === 'ACCEPTED';
+      let offererFlatNumber: string | undefined;
+      if (isAccepted) {
+        const mem = await repo.getMembership(auth.societyId, ride.offererUserId);
+        if (mem?.flatNumber) offererFlatNumber = mem.flatNumber;
+      }
+
       return formatPublicJourneyView(ride, offerer, vehicle, {
         isOfferer: ride.offererUserId === auth.userId,
         seekerRequestStatus,
+        offererFlatNumber,
       });
     })
   );

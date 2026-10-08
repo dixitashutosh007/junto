@@ -198,12 +198,17 @@ export async function GET(req: NextRequest) {
       const journey = await repo.getRideOccurrence(auth.societyId, r.journeyId);
       const offerer = journey ? await repo.getUserById(journey.offererUserId) : null;
       const vehicle = journey ? await repo.getVehicleById(auth.societyId, journey.vehicleId) : null;
+      let offererFlat: string | undefined;
+      if (r.status === 'ACCEPTED' && journey) {
+        const mem = await repo.getMembership(auth.societyId, journey.offererUserId);
+        offererFlat = mem?.flatNumber || 'Tower B-804';
+      }
       return {
         ...r,
         journey,
         offererName: offerer ? offerer.fullName : 'Resident',
         offererMobile: r.status === 'ACCEPTED' ? offerer?.mobile : undefined,
-        offererFlat: r.status === 'ACCEPTED' ? 'Tower B-804' : undefined,
+        offererFlat,
         vehicleName: vehicle ? `${vehicle.color} ${vehicle.make} ${vehicle.model}` : 'Vehicle',
         vehiclePlate: r.status === 'ACCEPTED' ? vehicle?.registrationNumber : undefined,
       };
