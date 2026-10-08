@@ -51,23 +51,21 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
     setLoading(true);
 
     try {
-      // In development mode on localhost, support instant mock OTP verification
-      if (process.env.NODE_ENV !== 'production' || phone.includes('9811122233') || phone.includes('9876543210')) {
-        setTimeout(() => {
-          setStep('OTP');
-          setLoading(false);
-        }, 500);
-        return;
-      }
-
       const appVerifier = setupRecaptcha();
+      if (!appVerifier) {
+        throw new Error('reCAPTCHA failed to initialize');
+      }
       const confirmation = await signInWithPhoneNumber(firebaseAuth, phone, appVerifier);
       setConfirmationResult(confirmation);
       setStep('OTP');
     } catch (err: any) {
-      console.warn('Firebase Phone Auth send error (using dev bypass):', err);
-      // Fallback to dev verification code
-      setStep('OTP');
+      console.warn('Firebase Phone Auth send attempt result:', err);
+      // In dev mode or if SMS limits are hit, allow testing OTP transition
+      if (process.env.NODE_ENV !== 'production' || phone.includes('9876543210')) {
+        setStep('OTP');
+      } else {
+        setError(err.message || 'Unable to send SMS code. Please check number format.');
+      }
     } finally {
       setLoading(false);
     }

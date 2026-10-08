@@ -29,9 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-100 min-h-screen text-zinc-900`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-100 min-h-screen text-slate-900 selection:bg-emerald-100 selection:text-emerald-900`}>
         <AuthProvider>
-          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl flex flex-col justify-between">
+          <div className="max-w-md mx-auto min-h-screen bg-slate-50 md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-3xl shadow-2xl shadow-slate-300/60 border border-slate-200/70 flex flex-col justify-between overflow-hidden">
             <TopBarNav />
             <main className="flex-1 flex flex-col">{children}</main>
             <Suspense fallback={null}>

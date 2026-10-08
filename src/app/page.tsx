@@ -105,12 +105,12 @@ export default function HomePage() {
   return (
     <div className="flex-1 flex flex-col pb-8">
       {/* Header */}
-      <header className="p-5 bg-gradient-to-b from-zinc-50 to-white border-b border-zinc-100">
+      <header className="p-5 bg-gradient-to-b from-white via-white to-slate-50/80 border-b border-slate-200/80">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-bold text-zinc-900">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
                   Good morning, {firstName}
                 </h1>
                 {/* Simplified Checkmark: Green Check if Approved, Red Warning if Pending */}
@@ -130,7 +130,7 @@ export default function HomePage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Flat {membership?.flatNumber || 'B-804'} · {membership?.role === 'SOCIETY_ADMIN' ? 'Society Admin' : 'Resident'}
               </p>
             </div>
@@ -138,7 +138,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowOtpModal(true)}
-              className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors"
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 transition-all border border-slate-200/70 shadow-2xs active:scale-95 cursor-pointer"
               title="Firebase Mobile Login"
             >
               <Phone className="w-4 h-4 text-emerald-700" />
@@ -148,40 +148,40 @@ export default function HomePage() {
         </div>
 
         {/* Profile Question: Are you an Offerer, Seeker, or Both? (Requirement 6) */}
-        <div className="mt-4 p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80">
+        <div className="mt-4 p-3 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider">
-              Your Commute Mode
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+              Commute Preference
             </span>
-            <span className="text-[10px] text-zinc-400">Sets your default view</span>
+            <span className="text-[10px] font-medium text-slate-400">Sets your default view</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
             <button
               onClick={() => updateCommuteIntent('OFFERER')}
-              className={`py-1.5 px-2 rounded-xl transition-all ${
+              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
                 user?.commuteIntent === 'OFFERER'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+                  ? 'bg-emerald-600 text-white shadow-sm font-bold'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
               🚗 Offer Rides
             </button>
             <button
               onClick={() => updateCommuteIntent('SEEKER')}
-              className={`py-1.5 px-2 rounded-xl transition-all ${
+              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
                 user?.commuteIntent === 'SEEKER'
-                  ? 'bg-zinc-900 text-white shadow-xs'
-                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+                  ? 'bg-slate-900 text-white shadow-sm font-bold'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
               🔍 Find Rides
             </button>
             <button
               onClick={() => updateCommuteIntent('BOTH')}
-              className={`py-1.5 px-2 rounded-xl transition-all ${
+              className={`py-2 px-2 rounded-xl transition-all cursor-pointer ${
                 user?.commuteIntent === 'BOTH' || !user?.commuteIntent
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+                  ? 'bg-emerald-800 text-white shadow-sm font-bold'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
               ✨ Both
@@ -191,27 +191,27 @@ export default function HomePage() {
       </header>
 
       {/* Main Core CTAs: Find a Ride & Offer a Ride */}
-      <div className="p-5 pb-2 grid grid-cols-2 gap-3.5">
+      <div className="p-5 pb-3 grid grid-cols-2 gap-3.5">
         <Link
           href="/rides/find"
-          className="flex flex-col items-start p-4 rounded-2xl bg-zinc-900 text-white shadow-md active:scale-98 transition-transform"
+          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
         >
-          <div className="p-2.5 rounded-xl bg-zinc-800 text-emerald-400 mb-3">
+          <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-emerald-400 mb-3 group-hover:scale-105 transition-transform">
             <Search className="w-5 h-5" />
           </div>
-          <span className="font-semibold text-base leading-tight">Find a Ride</span>
-          <span className="text-zinc-400 text-xs mt-1">Join a co-resident commute</span>
+          <span className="font-bold text-base leading-tight">Find a Ride</span>
+          <span className="text-slate-400 text-xs mt-1">Join a co-resident commute</span>
         </Link>
 
         <Link
           href="/rides/offer"
-          className="flex flex-col items-start p-4 rounded-2xl bg-emerald-600 text-white shadow-md active:scale-98 transition-transform"
+          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
         >
-          <div className="p-2.5 rounded-xl bg-emerald-700 text-emerald-100 mb-3">
+          <div className="p-2.5 rounded-xl bg-emerald-700/80 border border-emerald-500/60 text-emerald-100 mb-3 group-hover:scale-105 transition-transform">
             <Car className="w-5 h-5" />
           </div>
-          <span className="font-semibold text-base leading-tight">Offer a Ride</span>
-          <span className="text-emerald-100 text-xs mt-1">Share seats travelling your way</span>
+          <span className="font-bold text-base leading-tight">Offer a Ride</span>
+          <span className="text-emerald-100 text-xs mt-1">Share seats along your way</span>
         </Link>
       </div>
 
@@ -298,20 +298,20 @@ export default function HomePage() {
 
       {/* Available Rides Feed */}
       <section className="px-5 flex-1">
-        <div className="flex items-center justify-between mb-2.5">
-          <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
             Available Society Rides
           </h2>
-          <span className="text-xs text-zinc-500">Today & Tomorrow</span>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">Today & Upcoming</span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-zinc-400">Loading society rides...</div>
+          <div className="py-12 text-center text-xs text-slate-400">Loading society rides...</div>
         ) : rides.length === 0 ? (
-          <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
-            <Car className="w-8 h-8 mx-auto text-zinc-300 mb-2" />
-            <p className="text-xs font-semibold text-zinc-700">No rides scheduled for this window</p>
-            <p className="text-[11px] text-zinc-500 mt-0.5">Be the first to offer a seat!</p>
+          <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-slate-300 bg-white/70 shadow-2xs">
+            <Car className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            <p className="text-xs font-bold text-slate-700">No rides scheduled for this window</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Be the first to offer a seat!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -323,12 +323,12 @@ export default function HomePage() {
               return (
                 <div
                   key={ride.id}
-                  className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs hover:border-zinc-300 transition-all flex flex-col gap-2.5"
+                  className="p-4 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
                 >
                   {/* Card Header: Driver & Badge (Requirement 2 & 3: Clean, No Car Details, Simple Green Check) */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-zinc-900">
+                      <span className="font-extrabold text-sm text-slate-900 tracking-tight">
                         {ride.offerer.displayName}
                       </span>
                       {/* Simple Green Check */}
@@ -340,30 +340,30 @@ export default function HomePage() {
                       </span>
                     </div>
                     <div>
-                      <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        {ride.availableSeats} of {ride.totalSeats} seats
+                      <span className="inline-block text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
+                        {ride.availableSeats} of {ride.totalSeats} seats left
                       </span>
                     </div>
                   </div>
 
                   {/* Route & Timing */}
-                  <div className="bg-zinc-50 rounded-xl p-3 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between text-zinc-700">
+                  <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-2 border border-slate-100">
+                    <div className="flex items-center justify-between text-slate-700">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                        <span className="font-semibold text-zinc-800">
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-bold text-slate-900">
                           {new Date(ride.departureWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           {' – '}
                           {new Date(ride.departureWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
                         {ride.journeyDate === new Date().toISOString().split('T')[0]
                           ? 'Today'
                           : ride.journeyDate}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-zinc-800 font-medium">
+                    <div className="flex items-center gap-2 text-slate-900 font-semibold">
                       <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span className="truncate">{ride.destinationName}</span>
                     </div>
@@ -371,28 +371,38 @@ export default function HomePage() {
 
                   {/* Contact Revealed when accepted */}
                   {isAccepted && ride.offerer.mobile && (
-                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-1">
-                      <span className="font-semibold text-emerald-900">Commute Confirmed! Details revealed:</span>
-                      <p>Flat: <span className="font-semibold">{ride.offerer.flatNumber}</span></p>
-                      <p>Mobile: <a href={`tel:${ride.offerer.mobile}`} className="font-semibold underline">{ride.offerer.mobile}</a></p>
+                    <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-1.5">
+                      <span className="font-bold text-emerald-900 flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Commute Confirmed! Driver details unlocked:
+                      </span>
+                      <div className="flex items-center justify-between pt-1">
+                        <span>Flat <span className="font-bold">{ride.offerer.flatNumber}</span></span>
+                        <a
+                          href={`tel:${ride.offerer.mobile}`}
+                          className="font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1 shadow-2xs"
+                        >
+                          <Phone className="w-3 h-3" />
+                          <span>Call Driver</span>
+                        </a>
+                      </div>
                     </div>
                   )}
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-400">Departing from Society Gate</span>
+                    <span className="text-[11px] text-slate-400 font-medium">From Society Gate</span>
                     {isAccepted ? (
-                      <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accepted
                       </span>
                     ) : isRequested ? (
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
+                      <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
                         Request Pending
                       </span>
                     ) : (
                       <button
                         onClick={() => handleRequestRide(ride.id)}
-                        className="px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 active:scale-95 transition-all"
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer"
                       >
                         Request Ride
                       </button>
