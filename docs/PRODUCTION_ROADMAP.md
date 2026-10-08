@@ -8,7 +8,7 @@ Severity: 🔴 blocker for real users · 🟠 user-visible bug · 🟡 quality �
 
 ---
 
-## Phase 0 — Foundations (½ day)
+## Phase 0 — Foundations (½ day) ✅ Done
 
 Set up guard-rails so later phases can be verified.
 

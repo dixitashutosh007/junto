@@ -40,7 +40,7 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
-    const title = data.title || 'SocietyApps Update';
+    const title = data.title || 'Junto Update';
     const options = {
       body: data.body || 'You have an update regarding your ride share.',
       icon: '/icons/icon-192.png',
@@ -55,7 +55,7 @@ self.addEventListener('push', (event) => {
   } catch (e) {
     const text = event.data.text();
     event.waitUntil(
-      self.registration.showNotification('SocietyApps', {
+      self.registration.showNotification('Junto', {
         body: text,
         icon: '/icons/icon-192.png',
       })

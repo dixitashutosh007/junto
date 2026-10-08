@@ -1,6 +1,6 @@
 {
   "appId": "com.societyapps.rideshare",
-  "appName": "SocietyApps",
+  "appName": "Junto",
   "webDir": "out",
   "bundledWebRuntime": false,
   "server": {

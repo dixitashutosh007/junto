@@ -32,7 +32,7 @@ export function useNotifications() {
         // Send a friendly local test notification
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
-          reg.showNotification('SocietyApps Notifications Enabled', {
+          reg.showNotification('Junto Notifications Enabled', {
             body: 'You will now receive updates on matches, seat requests, and confirmations.',
             icon: '/icons/icon-192.png',
           });
