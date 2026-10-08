@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 2. Query Autocomplete Predictions
+  // 2. Query Google Places Predictions if API Key exists
   if (apiKey && query.length >= 2) {
     try {
       const googleUrl = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
@@ -91,27 +91,81 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (err) {
-      console.warn('Google Places API request failed, falling back to curated dataset', err);
+      console.warn('Google Places API request failed, falling back to open dataset', err);
     }
   }
 
-  // 3. High-Fidelity Local Dataset Matching with Fuzzy Token Matching
+  // 3. Tier 1: Instant In-Memory Curated Bangalore Tech Parks & Corridors (0ms)
   const lowerQuery = query.toLowerCase();
   const queryTokens = lowerQuery.split(/\s+/).filter(Boolean);
 
-  let matches: PlaceSuggestion[] = [];
-
+  let localMatches: PlaceSuggestion[] = [];
   if (queryTokens.length > 0) {
-    matches = BANGALORE_HUBS.filter((hub) => {
+    localMatches = BANGALORE_HUBS.filter((hub) => {
       const fullText = `${hub.primaryText} ${hub.secondaryText}`.toLowerCase();
-      // Match if all or any tokens match
       return queryTokens.every((token) => fullText.includes(token)) ||
              queryTokens.some((token) => fullText.includes(token));
     });
   }
 
+  // If we have strong local curated matches (e.g. 3 or more), return them instantly for zero latency
+  if (localMatches.length >= 3 || query.length < 2) {
+    return NextResponse.json({
+      suggestions: localMatches.slice(0, 8),
+      source: 'curated_bangalore',
+    });
+  }
+
+  // 4. Tier 2: OpenStreetMap (OSM / Photon) Zero-Cost Search with Bangalore Focus
+  let osmSuggestions: PlaceSuggestion[] = [];
+  if (query.length >= 2) {
+    try {
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=12.9716&lon=77.5946&limit=6`;
+      const osmRes = await fetch(photonUrl, {
+        headers: { 'User-Agent': 'Junto-Community-App/1.0' },
+        signal: AbortSignal.timeout(1800), // Quick timeout so it never hangs
+      });
+
+      if (osmRes.ok) {
+        const osmData = await osmRes.json();
+        if (osmData.features && Array.isArray(osmData.features)) {
+          osmSuggestions = osmData.features
+            .filter((f: any) => f.properties?.countrycode === 'IN' || !f.properties?.countrycode)
+            .map((f: any, idx: number) => {
+              const p = f.properties || {};
+              const coords = f.geometry?.coordinates || [77.5946, 12.9716];
+              const name = p.name || p.street || p.district || query;
+              const secondaryParts = [p.locality, p.district, p.city || 'Bengaluru', p.state]
+                .filter(Boolean)
+                .filter((v, i, a) => a.indexOf(v) === i && v !== name);
+
+              return {
+                placeId: `osm_${p.osm_type || 'N'}_${p.osm_id || idx}_${Date.now()}`,
+                primaryText: name,
+                secondaryText: secondaryParts.length > 0 ? secondaryParts.join(', ') : 'Bangalore, Karnataka',
+                lat: coords[1] || 12.9716,
+                lng: coords[0] || 77.5946,
+              };
+            });
+        }
+      }
+    } catch (osmErr) {
+      // In case of network timeout, continue gracefully with local matches
+      console.warn('Photon OSM geocode skipped', osmErr);
+    }
+  }
+
+  // Merge: Local curated matches first, then deduplicated OSM matches
+  const combined: PlaceSuggestion[] = [...localMatches];
+  for (const s of osmSuggestions) {
+    const isDuplicate = combined.some(
+      (c) => c.primaryText.toLowerCase() === s.primaryText.toLowerCase()
+    );
+    if (!isDuplicate) combined.push(s);
+  }
+
   return NextResponse.json({
-    suggestions: matches.length > 0 ? matches.slice(0, 8) : BANGALORE_HUBS.slice(0, 8),
-    source: 'curated_bangalore',
+    suggestions: combined.length > 0 ? combined.slice(0, 8) : BANGALORE_HUBS.slice(0, 8),
+    source: osmSuggestions.length > 0 ? 'osm_photon' : 'curated_bangalore',
   });
 }
