@@ -6,9 +6,13 @@ import { User, Society, SocietyMembership } from '@/types';
 interface AuthContextType {
   user: User | null;
   society: Society | null;
+  societiesList: Society[];
   membership: SocietyMembership | null;
-  activePersona: string; // 'usr-offerer-001' | 'usr-seeker-001' | 'usr-admin-001'
+  activePersona: string; // 'usr-offerer-001' | 'usr-seeker-001' | 'usr-admin-001' | 'usr-app-admin-001'
+  activeSocietyId: string;
   switchPersona: (userId: string) => void;
+  switchSociety: (societyId: string) => void;
+  updateCommuteIntent: (intent: 'OFFERER' | 'SEEKER' | 'BOTH') => Promise<void>;
   isLoading: boolean;
   refreshAuth: () => Promise<void>;
 }
@@ -16,27 +20,45 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   society: null,
+  societiesList: [],
   membership: null,
   activePersona: 'usr-offerer-001',
+  activeSocietyId: 'soc-ggh-001',
   switchPersona: () => {},
+  switchSociety: () => {},
+  updateCommuteIntent: async () => {},
   isLoading: true,
   refreshAuth: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activePersona, setActivePersona] = useState<string>('usr-offerer-001'); // Ashutosh Dixit default
+  const [activeSocietyId, setActiveSocietyId] = useState<string>('soc-ggh-001');
   const [user, setUser] = useState<User | null>(null);
   const [society, setSociety] = useState<Society | null>(null);
+  const [societiesList, setSocietiesList] = useState<Society[]>([]);
   const [membership, setMembership] = useState<SocietyMembership | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const fetchAuth = async (personaId: string) => {
+  const fetchSocieties = async () => {
+    try {
+      const res = await fetch('/api/v1/societies');
+      if (res.ok) {
+        const data = await res.json();
+        setSocietiesList(data.societies || []);
+      }
+    } catch (e) {
+      console.error('Failed to load societies list', e);
+    }
+  };
+
+  const fetchAuth = async (personaId: string, societyId: string) => {
     try {
       setIsLoading(true);
       const res = await fetch('/api/v1/auth/me', {
         headers: {
           'x-dev-user-id': personaId,
-          'x-society-id': 'soc-ggh-001',
+          'x-society-id': societyId,
         },
       });
       if (res.ok) {
@@ -53,15 +75,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    fetchAuth(activePersona);
-  }, [activePersona]);
+    fetchSocieties();
+  }, []);
+
+  useEffect(() => {
+    fetchAuth(activePersona, activeSocietyId);
+  }, [activePersona, activeSocietyId]);
 
   const switchPersona = (userId: string) => {
     setActivePersona(userId);
   };
 
+  const switchSociety = (societyId: string) => {
+    setActiveSocietyId(societyId);
+  };
+
+  const updateCommuteIntent = async (intent: 'OFFERER' | 'SEEKER' | 'BOTH') => {
+    if (!user) return;
+    setUser({ ...user, commuteIntent: intent });
+    // In production, syncs to DB/API
+  };
+
   const refreshAuth = async () => {
-    await fetchAuth(activePersona);
+    await fetchAuth(activePersona, activeSocietyId);
   };
 
   return (
@@ -69,9 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         society,
+        societiesList,
         membership,
         activePersona,
+        activeSocietyId,
         switchPersona,
+        switchSociety,
+        updateCommuteIntent,
         isLoading,
         refreshAuth,
       }}

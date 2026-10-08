@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { PersonaSwitcher } from "@/components/PersonaSwitcher";
-
+import { TopBarNav } from "@/components/TopBarNav";
 import { BottomNav } from "@/components/BottomNav";
 
 const geistSans = Geist({
@@ -32,8 +31,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-100 min-h-screen text-zinc-900`}>
         <AuthProvider>
-          <PersonaSwitcher />
-          <div className="max-w-md mx-auto min-h-[calc(100vh-37px)] bg-white shadow-xl flex flex-col justify-between">
+          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl flex flex-col justify-between">
+            <TopBarNav />
             <main className="flex-1 flex flex-col">{children}</main>
             <Suspense fallback={null}>
               <BottomNav />

@@ -16,17 +16,24 @@ import {
   Sparkles,
   MessageSquare,
   ShieldAlert,
+  Check,
+  XCircle,
+  Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
+import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 
 export default function HomePage() {
-  const { user, society, membership, activePersona } = useAuth();
+  const { user, society, membership, activePersona, updateCommuteIntent } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [requestStatusMap, setRequestStatusMap] = useState<Record<string, string>>({});
+  const [showOtpModal, setShowOtpModal] = useState(false);
+
+  const isApproved = membership?.status === 'ACTIVE';
 
   useEffect(() => {
     async function loadData() {
@@ -98,27 +105,89 @@ export default function HomePage() {
   return (
     <div className="flex-1 flex flex-col pb-8">
       {/* Header */}
-      <header className="p-5 bg-gradient-to-b from-emerald-50 to-white border-b border-zinc-100">
+      <header className="p-5 bg-gradient-to-b from-zinc-50 to-white border-b border-zinc-100">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-emerald-800 tracking-wide uppercase">
-              {society?.name || 'Mahaveer Ranches'}
-            </p>
-            <h1 className="text-xl font-bold text-zinc-900 mt-0.5">
-              Good morning, {firstName}
-            </h1>
+          <div className="flex items-center gap-2">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-bold text-zinc-900">
+                  Good morning, {firstName}
+                </h1>
+                {/* Simplified Checkmark: Green Check if Approved, Red Warning if Pending */}
+                {isApproved ? (
+                  <span
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white shadow-xs"
+                    title="Verified & Approved Resident"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-500 text-white shadow-xs"
+                    title="Pending Admin Review"
+                  >
+                    <XCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Flat {membership?.flatNumber || 'B-804'} · {membership?.role === 'SOCIETY_ADMIN' ? 'Society Admin' : 'Resident'}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-emerald-100/80 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Verified Resident</span>
-            </div>
+            <button
+              onClick={() => setShowOtpModal(true)}
+              className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors"
+              title="Firebase Mobile Login"
+            >
+              <Phone className="w-4 h-4 text-emerald-700" />
+            </button>
             <NotificationBell />
           </div>
         </div>
-        <p className="text-xs text-zinc-500 mt-2">
-          Flat {membership?.flatNumber || 'B-804'} · {membership?.role === 'SOCIETY_ADMIN' ? 'Society Admin' : 'Resident Member'}
-        </p>
+
+        {/* Profile Question: Are you an Offerer, Seeker, or Both? (Requirement 6) */}
+        <div className="mt-4 p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider">
+              Your Commute Mode
+            </span>
+            <span className="text-[10px] text-zinc-400">Sets your default view</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+            <button
+              onClick={() => updateCommuteIntent('OFFERER')}
+              className={`py-1.5 px-2 rounded-xl transition-all ${
+                user?.commuteIntent === 'OFFERER'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+              }`}
+            >
+              🚗 Offer Rides
+            </button>
+            <button
+              onClick={() => updateCommuteIntent('SEEKER')}
+              className={`py-1.5 px-2 rounded-xl transition-all ${
+                user?.commuteIntent === 'SEEKER'
+                  ? 'bg-zinc-900 text-white shadow-xs'
+                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+              }`}
+            >
+              🔍 Find Rides
+            </button>
+            <button
+              onClick={() => updateCommuteIntent('BOTH')}
+              className={`py-1.5 px-2 rounded-xl transition-all ${
+                user?.commuteIntent === 'BOTH' || !user?.commuteIntent
+                  ? 'bg-emerald-800 text-white shadow-xs'
+                  : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
+              }`}
+            >
+              ✨ Both
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* Main Core CTAs: Find a Ride & Offer a Ride */}
@@ -256,27 +325,21 @@ export default function HomePage() {
                   key={ride.id}
                   className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs hover:border-zinc-300 transition-all flex flex-col gap-2.5"
                 >
-                  {/* Card Header: Driver & Badge */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-sm text-zinc-900">
-                          {ride.offerer.displayName}
-                        </span>
-                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-full">
-                          Verified Resident
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {ride.vehicle.color} {ride.vehicle.make} {ride.vehicle.model}
-                        {ride.vehicle.registrationNumber && (
-                          <span className="font-mono text-zinc-700 font-semibold ml-1">
-                            ({ride.vehicle.registrationNumber})
-                          </span>
-                        )}
-                      </p>
+                  {/* Card Header: Driver & Badge (Requirement 2 & 3: Clean, No Car Details, Simple Green Check) */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-zinc-900">
+                        {ride.offerer.displayName}
+                      </span>
+                      {/* Simple Green Check */}
+                      <span
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shadow-2xs"
+                        title="Verified Resident"
+                      >
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </span>
                     </div>
-                    <div className="text-right">
+                    <div>
                       <span className="inline-block text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                         {ride.availableSeats} of {ride.totalSeats} seats
                       </span>
@@ -370,6 +433,16 @@ export default function HomePage() {
           SocietyApps connects verified co-residents travelling in compatible directions. We do not provide transportation or guarantee safety and punctuality. Residents independently verify vehicle and arrangements.
         </p>
       </footer>
+
+      {/* Firebase Phone Auth OTP Modal */}
+      <PhoneOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        defaultMobile={user?.mobile}
+        onSuccess={(fbUser) => {
+          setShowOtpModal(false);
+        }}
+      />
     </div>
   );
 }

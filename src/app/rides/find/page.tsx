@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Search, MapPin, Clock, ArrowLeft, Filter, Car, CheckCircle2 } from 'lucide-react';
+import { Search, MapPin, Clock, ArrowLeft, Filter, Car, CheckCircle2, Check } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
@@ -193,19 +193,17 @@ export default function FindRidePage() {
                   key={ride.id}
                   className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2.5"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-xs text-zinc-900">
-                          {ride.offerer.displayName}
-                        </span>
-                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-full">
-                          Verified Resident
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">
-                        {ride.vehicle.color} {ride.vehicle.make} {ride.vehicle.model}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-zinc-900">
+                        {ride.offerer.displayName}
+                      </span>
+                      <span
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shadow-2xs"
+                        title="Verified Resident"
+                      >
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </span>
                     </div>
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                       {ride.availableSeats} seats left

@@ -41,14 +41,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Curated Bangalore tech park suggestions matching query
-  const matches = BANGALORE_HUBS.filter(
-    (hub) =>
-      hub.primaryText.toLowerCase().includes(query) ||
-      hub.secondaryText.toLowerCase().includes(query)
-  );
+  // Curated Bangalore dataset suggestions matching query
+  const queryTokens = query.split(/\s+/).filter(Boolean);
+  
+  const matches = BANGALORE_HUBS.filter((hub) => {
+    if (!query) return true;
+    const fullText = `${hub.primaryText} ${hub.secondaryText}`.toLowerCase();
+    // Return true if any query token matches
+    return queryTokens.some((token) => fullText.includes(token));
+  });
 
   return NextResponse.json({
-    suggestions: matches.length > 0 ? matches : BANGALORE_HUBS.slice(0, 6),
+    suggestions: matches.length > 0 ? matches.slice(0, 8) : BANGALORE_HUBS.slice(0, 8),
   });
 }

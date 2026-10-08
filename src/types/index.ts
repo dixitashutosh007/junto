@@ -38,6 +38,8 @@ export interface User {
   mobile: string;
   fullName: string;
   gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+  commuteIntent?: 'OFFERER' | 'SEEKER' | 'BOTH';
+  defaultPersona?: 'OFFERER' | 'SEEKER' | 'SOCIETY_ADMIN' | 'APP_ADMIN';
   workLocationName?: string;
   workLatitude?: number;
   workLongitude?: number;

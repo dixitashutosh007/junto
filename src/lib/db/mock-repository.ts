@@ -58,6 +58,51 @@ export class MockDynamoRepository implements ISocietyRepository {
     };
     this.societies.set(societyId, society);
 
+    // Second demo society: Prestige Ferns Residency (Harlur / Sarjapur Road)
+    const society2Id = 'soc-pfr-002';
+    const society2: Society = {
+      id: society2Id,
+      slug: 'prestige-ferns-residency',
+      name: 'Prestige Ferns Residency',
+      code: 'PFR2024',
+      address: 'Harlur Main Road, Off Sarjapur Road, Bellandur, Bangalore 560102',
+      latitude: 12.9056,
+      longitude: 77.6698,
+      settings: {
+        max_detour_minutes: 12,
+        require_admin_approval: true,
+        allow_gender_preferences: true,
+        community_rules: '1. Verified residents only.\n2. Be at the Tower gate on time.',
+      },
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+    this.societies.set(society2Id, society2);
+
+    // Platform Super Admin: Rajesh N.
+    const platformAdminUser: User = {
+      id: 'usr-app-admin-001',
+      cognitoSub: 'cognito-sub-appadmin-001',
+      email: 'rajesh@societyapps.org',
+      mobile: '+919800011122',
+      fullName: 'Rajesh Nair',
+      gender: 'MALE',
+      defaultPersona: 'APP_ADMIN',
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(platformAdminUser.id, platformAdminUser);
+    this.memberships.set(`${societyId}#${platformAdminUser.id}`, {
+      id: 'mem-superadmin-001',
+      societyId,
+      userId: platformAdminUser.id,
+      flatNumber: 'HQ-Admin',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      approvedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
     // Admin User: Vikram Mehta
     const adminUser: User = {
       id: 'usr-admin-001',
@@ -476,6 +521,10 @@ export class MockDynamoRepository implements ISocietyRepository {
       if (s.code.toUpperCase() === code.toUpperCase()) return s;
     }
     return null;
+  }
+
+  async listSocieties(): Promise<Society[]> {
+    return Array.from(this.societies.values());
   }
 
   async createSociety(society: Society): Promise<Society> {

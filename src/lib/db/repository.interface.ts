@@ -21,6 +21,7 @@ export interface ISocietyRepository {
   // Societies
   getSocietyById(societyId: string): Promise<Society | null>;
   getSocietyByCode(code: string): Promise<Society | null>;
+  listSocieties(): Promise<Society[]>;
   createSociety(society: Society): Promise<Society>;
   updateSociety(societyId: string, updates: Partial<Society>): Promise<Society>;
   updateSocietySettings(
