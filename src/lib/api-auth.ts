@@ -20,10 +20,21 @@ export interface AuthContext {
 export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
   const repo = getRepository();
 
-  // 1. Resolve session userId from cookie, or development header
+  // 1. Resolve session userId from cookie, or development header (in non-production only)
   const cookieSessionUid = req.cookies.get('societyapps_session')?.value;
   const devUserId = req.headers.get('x-dev-user-id');
-  const userId = cookieSessionUid || devUserId || 'usr-offerer-001';
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // In production, session cookie is strictly mandatory.
+  // In development, allow explicit x-dev-user-id or persona fallback for test suites.
+  let userId: string | undefined = cookieSessionUid;
+  if (!userId && !isProduction) {
+    userId = devUserId || 'usr-offerer-001';
+  }
+
+  if (!userId) {
+    return null; // Unauthenticated request
+  }
 
   // 2. Resolve target societyId
   const cookieSocietyId = req.cookies.get('societyapps_society_id')?.value;

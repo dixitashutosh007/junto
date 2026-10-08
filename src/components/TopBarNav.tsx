@@ -92,43 +92,37 @@ export function TopBarNav() {
     availablePersonas.find((p) => p.id === activePersona) || availablePersonas[0];
   const CurrentIcon = currentPersona.icon;
 
-  // SocietyApps Product Suite
+  // Junto Product Suite
   const societyAppsSuite = [
     {
-      name: 'Ride Share',
+      name: 'RideShare',
       icon: '🚗',
       description: 'Peer-to-peer co-resident carpooling',
       active: true,
       href: '/',
     },
     {
-      name: 'Announcements',
-      icon: '📢',
-      description: 'Official MC & society circulars',
+      name: 'Community',
+      icon: '💬',
+      description: 'Resident directory, discussions & society groups',
       active: false,
     },
     {
-      name: 'Local Services',
-      icon: '🛠️',
-      description: 'Verified maids, cooks, plumbers',
+      name: 'Marketplace',
+      icon: '🛍️',
+      description: 'Buy, sell & rent household items securely',
       active: false,
     },
     {
-      name: 'Buy, Sell & Rent',
-      icon: '🏷️',
-      description: 'Society resident marketplace',
-      active: false,
-    },
-    {
-      name: 'Lessons & Skills',
+      name: 'Lessons / Classes',
       icon: '📚',
-      description: 'Music, fitness, tuition in society',
+      description: 'Music, fitness, tuition & hobbies in society',
       active: false,
     },
     {
-      name: 'Clubhouse & Amenities',
-      icon: '🏸',
-      description: 'Badminton, party hall bookings',
+      name: 'Review',
+      icon: '⭐',
+      description: 'Verified maids, cooks & local service reviews',
       active: false,
     },
   ];

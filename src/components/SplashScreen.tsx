@@ -124,8 +124,9 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
             <span>Explore as Demo:</span>
             <button
               onClick={async () => {
-                switchPersona('usr-offerer-001');
+                localStorage.setItem('junto_demo_mode', 'true');
                 localStorage.removeItem('societyapps_logged_out');
+                switchPersona('usr-offerer-001');
                 window.location.reload();
               }}
               className="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer"
@@ -135,8 +136,9 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
             <span>·</span>
             <button
               onClick={async () => {
-                switchPersona('usr-seeker-001');
+                localStorage.setItem('junto_demo_mode', 'true');
                 localStorage.removeItem('societyapps_logged_out');
+                switchPersona('usr-seeker-001');
                 window.location.reload();
               }}
               className="text-teal-400 hover:text-teal-300 font-bold underline cursor-pointer"
@@ -146,8 +148,9 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
             <span>·</span>
             <button
               onClick={async () => {
-                switchPersona('usr-admin-001');
+                localStorage.setItem('junto_demo_mode', 'true');
                 localStorage.removeItem('societyapps_logged_out');
+                switchPersona('usr-admin-001');
                 window.location.reload();
               }}
               className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"

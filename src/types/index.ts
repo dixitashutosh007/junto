@@ -77,6 +77,7 @@ export interface Vehicle {
   color: string; // e.g. "Polar White"
   registrationNumber: string; // e.g. "KA-04-MB-1234"
   capacity: number; // e.g. 4
+  mileageKmPerLitre?: number; // e.g. 15 km/L (used for advisory fuel share calculation)
   isActive: boolean;
   createdAt: string;
 }
@@ -287,4 +288,12 @@ export interface PublicJourneyView {
   vehicle: PublicVehicleView;
   status: JourneyStatus;
   userRequestStatus?: RequestStatus;
+  baselineDistanceKm?: number;
+  fuelSharePointsEstimate?: {
+    totalFuelCost: number; // in INR
+    perPassengerPoints: number; // 1 Point = 1 INR
+    fuelPricePerLitre: number;
+    vehicleMileageKmPerLitre: number;
+    disclaimer: string;
+  };
 }

@@ -16,6 +16,8 @@ import {
  * 3. Vehicle plate number is STRIPPED unless the request is in ACCEPTED status.
  * 4. Email is NEVER revealed in public ride listings.
  */
+import { calculateFuelSharePoints } from '../utils/fuel-share';
+
 export function formatPublicJourneyView(
   occurrence: RideOccurrence,
   offererUser: User,
@@ -53,6 +55,14 @@ export function formatPublicJourneyView(
     registrationNumber: isAcceptedParticipant ? vehicle.registrationNumber : undefined,
   };
 
+  // Compute fuel points estimate based on vehicle mileage and trip distance
+  const distanceKm = occurrence.baselineDistanceKm || 20;
+  const fuelCalc = calculateFuelSharePoints({
+    distanceKm,
+    mileageKmPerLitre: vehicle.mileageKmPerLitre || 15,
+    seatsOffered: occurrence.totalSeats,
+  });
+
   return {
     id: occurrence.id,
     journeyDate: occurrence.journeyDate,
@@ -68,5 +78,13 @@ export function formatPublicJourneyView(
     vehicle: vehicleView,
     status: occurrence.status,
     userRequestStatus: currentUserRoleInJourney?.seekerRequestStatus,
+    baselineDistanceKm: distanceKm,
+    fuelSharePointsEstimate: {
+      totalFuelCost: fuelCalc.totalTripFuelCostINR,
+      perPassengerPoints: fuelCalc.perPassengerPoints,
+      fuelPricePerLitre: fuelCalc.fuelPricePerLitre,
+      vehicleMileageKmPerLitre: fuelCalc.vehicleMileageKmPerLitre,
+      disclaimer: fuelCalc.settlementNote,
+    },
   };
 }

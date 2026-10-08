@@ -389,6 +389,21 @@ export default function HomePage() {
                       <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span className="truncate">{ride.destinationName}</span>
                     </div>
+
+                    {/* Requirement 2: Advisory Fuel Share Points (Zero app payments, in-person settlement) */}
+                    {ride.fuelSharePointsEstimate && (
+                      <div className="pt-1.5 mt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1 text-slate-700">
+                          <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                            ⛽ ~{ride.fuelSharePointsEstimate.perPassengerPoints} Fuel Points
+                          </span>
+                          <span className="text-slate-400">({ride.vehicle?.model || 'Car'} · {ride.fuelSharePointsEstimate.vehicleMileageKmPerLitre} km/L)</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-medium" title="Settle directly with driver in person. No app payments.">
+                          In-person settlement
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Contact Revealed when accepted */}

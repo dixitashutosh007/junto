@@ -42,6 +42,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [color, setColor] = useState('White');
   const [regNumber, setRegNumber] = useState('');
   const [capacity, setCapacity] = useState(4);
+  const [mileage, setMileage] = useState('15'); // km/L for fuel points estimation
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -109,6 +110,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
             color: color.trim(),
             registrationNumber: regNumber.trim().toUpperCase(),
             capacity: vehicleType === 'TWO_WHEELER' ? 1 : Number(capacity),
+            mileageKmPerLitre: mileage ? Number(mileage) : 15,
           }),
         });
         if (!vehRes.ok) {
@@ -390,6 +392,34 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                       )}
                     </select>
                   </div>
+                </div>
+
+                {/* Fuel Mileage Input for fair Fuel Share Points Estimation */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700">
+                      Vehicle Fuel Mileage (km/L)
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                      Advisory Fuel Share
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="5"
+                      max="60"
+                      step="0.5"
+                      value={mileage}
+                      onChange={(e) => setMileage(e.target.value)}
+                      placeholder="e.g. 15"
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none focus:border-emerald-500"
+                    />
+                    <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">km/L</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Used to calculate advisory fuel share points. Settle directly with co-riders in person. No app payments.
+                  </p>
                 </div>
               </div>
             )}

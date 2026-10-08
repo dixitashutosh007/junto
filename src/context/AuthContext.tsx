@@ -59,20 +59,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAuth = async (personaId: string, societyId: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/v1/auth/me', {
-        headers: {
-          'x-dev-user-id': personaId,
-          'x-society-id': societyId,
-        },
-      });
+      // In production, do not send dev persona override header unless in demo preview mode
+      const isProd = process.env.NODE_ENV === 'production';
+      const isDemoMode = typeof window !== 'undefined' && localStorage.getItem('junto_demo_mode') === 'true';
+
+      const headers: Record<string, string> = {
+        'x-society-id': societyId,
+      };
+
+      if (!isProd || isDemoMode) {
+        headers['x-dev-user-id'] = personaId;
+      }
+
+      const res = await fetch('/api/v1/auth/me', { headers });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
         setSociety(data.society);
         setMembership(data.membership);
+      } else {
+        setUser(null);
+        setMembership(null);
       }
     } catch (e) {
       console.error('Failed to load user', e);
+      setUser(null);
+      setMembership(null);
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setMembership(null);
     setIsLoggedOut(true);
+    localStorage.removeItem('junto_demo_mode');
     localStorage.setItem('societyapps_logged_out', 'true');
   };
 

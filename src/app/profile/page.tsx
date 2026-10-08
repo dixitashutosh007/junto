@@ -47,6 +47,7 @@ export default function ProfilePage() {
   const [newColor, setNewColor] = useState('White');
   const [newReg, setNewReg] = useState('');
   const [newCapacity, setNewCapacity] = useState(3);
+  const [newMileage, setNewMileage] = useState('15');
 
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -178,6 +179,7 @@ export default function ProfilePage() {
           color: newColor,
           registrationNumber: newReg.toUpperCase(),
           capacity: newVehType === 'TWO_WHEELER' ? 1 : Number(newCapacity),
+          mileageKmPerLitre: newMileage ? Number(newMileage) : 15,
         }),
       });
 
@@ -657,6 +659,44 @@ export default function ProfilePage() {
                   onChange={(e) => setNewColor(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Seats for Residents</label>
+                  <select
+                    value={newCapacity}
+                    onChange={(e) => setNewCapacity(Number(e.target.value))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
+                  >
+                    {newVehType === 'TWO_WHEELER' ? (
+                      <option value={1}>1 Pillion Seat</option>
+                    ) : (
+                      <>
+                        <option value={1}>1 Seat</option>
+                        <option value={2}>2 Seats</option>
+                        <option value={3}>3 Seats</option>
+                        <option value={4}>4 Seats</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Fuel Mileage (km/L)</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="5"
+                      max="60"
+                      step="0.5"
+                      placeholder="15"
+                      value={newMileage}
+                      onChange={(e) => setNewMileage(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
+                    />
+                    <span className="text-[11px] font-bold text-slate-500">km/L</span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-1">

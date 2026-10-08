@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { type, make, model, color, registrationNumber, capacity } = body;
+  const { type, make, model, color, registrationNumber, capacity, mileageKmPerLitre } = body;
 
   if (!make || !model || !registrationNumber) {
     return errorResponse('Missing vehicle details');
@@ -37,6 +37,15 @@ export async function POST(req: NextRequest) {
 
   const formattedReg = formatIndianRegistration(registrationNumber);
 
+  // Validate or default mileage (km/L)
+  let parsedMileage = 15;
+  if (mileageKmPerLitre !== undefined && mileageKmPerLitre !== null && mileageKmPerLitre !== '') {
+    const num = Number(mileageKmPerLitre);
+    if (!isNaN(num) && num >= 5 && num <= 60) {
+      parsedMileage = Math.round(num * 10) / 10;
+    }
+  }
+
   const repo = getRepository();
   const vehicle: Vehicle = {
     id: `veh-${Date.now()}`,
@@ -48,6 +57,7 @@ export async function POST(req: NextRequest) {
     color: color || 'White',
     registrationNumber: formattedReg,
     capacity: capacity ? Number(capacity) : 4,
+    mileageKmPerLitre: parsedMileage,
     isActive: true,
     createdAt: new Date().toISOString(),
   };

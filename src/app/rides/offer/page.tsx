@@ -262,7 +262,7 @@ export default function OfferRidePage() {
               >
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.color} {v.make} {v.model} ({v.registrationNumber})
+                    {v.color} {v.make} {v.model} ({v.registrationNumber}) {v.mileageKmPerLitre ? `· ${v.mileageKmPerLitre} km/L` : ''}
                   </option>
                 ))}
               </select>
@@ -271,6 +271,14 @@ export default function OfferRidePage() {
                 No vehicles registered. Register your car first.
               </div>
             )}
+            <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-[11px] text-emerald-950 space-y-1">
+              <div className="font-bold flex items-center gap-1 text-emerald-900">
+                <span>⛽ Fuel Sharing Advisory</span>
+              </div>
+              <p className="text-[10px] text-emerald-800 leading-relaxed">
+                Junto estimates fair fuel points based on your vehicle's fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
+              </p>
+            </div>
             <p className="text-[10px] text-zinc-400">
               Registration number is masked until you accept a ride request.
             </p>
