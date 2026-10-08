@@ -3,9 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci --legacy-peer-deps
     build:
       commands:
+        - env | grep -E '^(NEXT_PUBLIC_|FIREBASE_|GOOGLE_)' > .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next

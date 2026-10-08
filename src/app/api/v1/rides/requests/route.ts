@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { getAuthContext, errorResponse } from '@/lib/api-auth';
 import { RideRequest } from '@/types';
+import { CreateRideRequestSchema } from '@/lib/validation/schemas';
 
 // Request a seat on a journey
 export async function POST(req: NextRequest) {
@@ -9,7 +10,12 @@ export async function POST(req: NextRequest) {
   if (!auth) return errorResponse('Unauthorized', 401);
   if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const parseResult = CreateRideRequestSchema.safeParse(body);
+  if (!parseResult.success) {
+    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid request parameters');
+  }
+
   const {
     journeyId,
     requestedSeats,
@@ -19,9 +25,7 @@ export async function POST(req: NextRequest) {
     dropoffName,
     dropoffLat,
     dropoffLng,
-  } = body;
-
-  if (!journeyId) return errorResponse('Missing journeyId');
+  } = parseResult.data;
 
   const repo = getRepository();
   const journey = await repo.getRideOccurrence(auth.societyId, journeyId);

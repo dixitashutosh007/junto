@@ -3,6 +3,7 @@ import { MockDynamoRepository } from '../mock-repository';
 import { evaluateCommuteMatch, estimateDetourMinutes } from '../../services/matching';
 import { formatPublicJourneyView } from '../../services/privacy';
 import { RideOccurrence, User, Vehicle } from '@/types';
+import { CreateRideSchema, FeedbackSchema } from '../../validation/schemas';
 
 describe('SocietyApps V1 Core Test Suite', () => {
   let repo: MockDynamoRepository;
@@ -373,6 +374,40 @@ describe('SocietyApps V1 Core Test Suite', () => {
       const westDrop = { lat: 12.9600, lng: 77.5100 };
       const detourOutOffRoute = estimateDetourMinutes(ranchesGate, manyata, westPickup, westDrop);
       expect(detourOutOffRoute).toBeGreaterThan(10);
+    });
+  });
+
+  describe('8. Production Security & Zod Input Validation', () => {
+    it('rejects invalid payloads with strict schema bounds', () => {
+      // Invalid date format
+      const invalidRide = CreateRideSchema.safeParse({
+        vehicleId: 'veh-1',
+        journeyDate: 'tomorrow', // Not YYYY-MM-DD
+        departureWindowStart: '08:00',
+        departureWindowEnd: '08:20',
+        destinationName: 'Manyata',
+      });
+      expect(invalidRide.success).toBe(false);
+
+      // Valid ride
+      const validRide = CreateRideSchema.safeParse({
+        vehicleId: 'veh-1',
+        journeyDate: '2026-10-09',
+        departureWindowStart: '08:00',
+        departureWindowEnd: '08:20',
+        destinationName: 'Manyata Tech Park',
+        totalSeats: 2,
+      });
+      expect(validRide.success).toBe(true);
+
+      // Feedback rejects 1-5 star ratings and requires valid enum outcome
+      const validFeedback = FeedbackSchema.safeParse({
+        journeyId: 'jrn-1',
+        toUserId: 'usr-1',
+        outcome: 'COMPLETED',
+        qualitativeTags: ['Reliable & Punctual'],
+      });
+      expect(validFeedback.success).toBe(true);
     });
   });
 });

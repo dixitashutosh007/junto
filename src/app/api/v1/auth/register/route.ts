@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { errorResponse } from '@/lib/api-auth';
 import { User, SocietyMembership } from '@/types';
+import { MemberRegistrationSchema } from '@/lib/validation/schemas';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { societyCode, fullName, email, mobile, flatNumber, gender, workLocationName } = body;
-
-    if (!societyCode || !fullName || !email || !mobile || !flatNumber) {
-      return errorResponse('Missing required registration fields');
+    const body = await req.json().catch(() => ({}));
+    const parseResult = MemberRegistrationSchema.safeParse(body);
+    if (!parseResult.success) {
+      return errorResponse(parseResult.error.issues[0]?.message || 'Invalid registration details');
     }
+
+    const { societyCode, fullName, email, mobile, flatNumber, gender, workLocationName } = parseResult.data;
 
     const repo = getRepository();
 

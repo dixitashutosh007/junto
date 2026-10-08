@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { getAuthContext, errorResponse } from '@/lib/api-auth';
 import { Feedback } from '@/types';
+import { FeedbackSchema } from '@/lib/validation/schemas';
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
-  const body = await req.json();
-  const { journeyId, toUserId, role, outcome, qualitativeTags, privateNote } = body;
-
-  if (!journeyId || !toUserId || !outcome) {
-    return errorResponse('Missing required feedback fields');
+  const body = await req.json().catch(() => ({}));
+  const parseResult = FeedbackSchema.safeParse(body);
+  if (!parseResult.success) {
+    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid feedback parameters');
   }
+
+  const { journeyId, toUserId, role, outcome, qualitativeTags, privateNote } = parseResult.data;
 
   const repo = getRepository();
 

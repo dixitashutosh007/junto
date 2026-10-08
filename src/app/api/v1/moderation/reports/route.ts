@@ -2,18 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { getAuthContext, errorResponse } from '@/lib/api-auth';
 import { ModerationReport } from '@/types';
+import { ModerationReportSchema } from '@/lib/validation/schemas';
 
 // Submit a resident or ride violation report
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext(req);
   if (!auth) return errorResponse('Unauthorized', 401);
 
-  const body = await req.json();
-  const { reportedUserId, journeyId, category, description } = body;
-
-  if (!reportedUserId || !category || !description) {
-    return errorResponse('Missing required report fields');
+  const body = await req.json().catch(() => ({}));
+  const parseResult = ModerationReportSchema.safeParse(body);
+  if (!parseResult.success) {
+    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid moderation report parameters');
   }
+
+  const { reportedUserId, journeyId, category, description } = parseResult.data;
 
   const repo = getRepository();
   const report: ModerationReport = {

@@ -3,6 +3,7 @@ import { getRepository } from '@/lib/db';
 import { getAuthContext, errorResponse } from '@/lib/api-auth';
 import { formatPublicJourneyView } from '@/lib/services/privacy';
 import { RideOccurrence } from '@/types';
+import { CreateRideSchema } from '@/lib/validation/schemas';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -53,13 +54,18 @@ export async function POST(req: NextRequest) {
   if (!auth) return errorResponse('Unauthorized', 401);
   if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const parseResult = CreateRideSchema.safeParse(body);
+  if (!parseResult.success) {
+    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid ride parameters');
+  }
+
   const {
     vehicleId,
     journeyDate,
-    direction,
     departureWindowStart,
     departureWindowEnd,
+    direction,
     originName,
     originLat,
     originLng,
@@ -70,11 +76,7 @@ export async function POST(req: NextRequest) {
     totalSeats,
     genderPreference,
     visibility,
-  } = body;
-
-  if (!vehicleId || !journeyDate || !destinationName || !departureWindowStart) {
-    return errorResponse('Missing required ride fields');
-  }
+  } = parseResult.data;
 
   const repo = getRepository();
 
