@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#022c22" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle with subtle border -->
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  <rect width="504" height="504" x="4" y="4" rx="124" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8" />
+
+  <!-- Central Junto Emblem: Stylized Connected Rideshare Car & Community Hub -->
+  <g filter="url(#shadow)">
+    <!-- Connected Community Arc -->
+    <path d="M 140 200 C 140 130, 372 130, 372 200" fill="none" stroke="url(#glow)" stroke-width="24" stroke-linecap="round" />
+    
+    <!-- Central Car Icon -->
+    <path d="M 160 300 L 190 220 C 195 210, 205 204, 218 204 L 294 204 C 307 204, 317 210, 322 220 L 352 300 L 370 300 C 382 300, 392 310, 392 322 L 392 356 C 392 368, 382 378, 370 378 L 360 378 L 360 400 C 360 412, 350 422, 338 422 L 322 422 C 310 422, 300 412, 300 400 L 300 378 L 212 378 L 212 400 C 212 412, 202 422, 190 422 L 174 422 C 162 422, 152 412, 152 400 L 152 378 L 142 378 C 130 378, 120 368, 120 356 L 120 322 C 120 310, 130 300, 142 300 Z" fill="#ffffff" />
+    
+    <!-- Windshield -->
+    <path d="M 204 290 L 222 236 C 224 232, 228 230, 233 230 L 279 230 C 284 230, 288 232, 290 236 L 308 290 Z" fill="#064e3b" />
+    
+    <!-- Headlights -->
+    <circle cx="166" cy="336" r="14" fill="#fef08a" />
+    <circle cx="346" cy="336" r="14" fill="#fef08a" />
+    
+    <!-- Co-Resident Pin Node -->
+    <circle cx="256" cy="130" r="32" fill="#ffffff" />
+    <circle cx="256" cy="130" r="18" fill="#059669" />
+  </g>
+</svg>

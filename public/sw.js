@@ -1,12 +1,13 @@
-// SocietyApps Lightweight Service Worker
+// Junto Lightweight Service Worker
 // Enables PWA installation, offline shell caching, and Web Push notifications
 
-const CACHE_NAME = 'societyapps-v1';
+const CACHE_NAME = 'junto-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {

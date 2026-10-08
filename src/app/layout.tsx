@@ -20,6 +20,24 @@ import React, { Suspense } from "react";
 export const metadata: Metadata = {
   title: "Junto — Residential Co-commute & Community Hub",
   description: "Peer-to-peer co-commute matchmaking and community network for residential societies",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Junto",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#059669",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
