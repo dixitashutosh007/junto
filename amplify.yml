@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --cache .npm --prefer-offline
+        - npm ci --legacy-peer-deps --cache .npm --prefer-offline
     build:
       commands:
         - env | grep -e AWS_ -e NEXT_ -e FIREBASE_ -e USE_ >> .env.production || true
