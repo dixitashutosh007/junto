@@ -19,27 +19,37 @@ export async function POST(req: NextRequest) {
     const targetSocietyId = societyId || 'soc-ggh-001';
     const repo = getRepository();
 
-    // 1. In dev/testing mode without live GCP credentials, handle dev tokens gracefully
-    let uid = 'usr-offerer-001';
-    let phoneNumber = '+919811122233';
+    const isProduction = process.env.NODE_ENV === 'production';
+    let uid: string;
+    let phoneNumber: string = '+919811122233';
 
     try {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       uid = decodedToken.uid;
       phoneNumber = decodedToken.phone_number || phoneNumber;
     } catch (tokenErr) {
-      // In dev mode or mock token, allow dev UID parsing
+      // In production, token MUST be authentic and signed by Firebase Admin
+      if (isProduction) {
+        console.error('Firebase token verification failed in production:', tokenErr);
+        return NextResponse.json({ error: 'Invalid or expired Firebase authentication token' }, { status: 401 });
+      }
+      // In local dev/test mode only:
       if (idToken.startsWith('dev-token-')) {
         uid = idToken.replace('dev-token-', '');
       } else {
-        console.warn('Firebase token verification note (using dev bypass):', tokenErr);
+        uid = 'usr-offerer-001';
       }
     }
 
-    // 2. Fetch or create user record for this mobile number
+    // 2. Fetch existing user by UID or phone number
     let user = await repo.getUserById(uid);
+    if (!user && phoneNumber) {
+      user = await repo.getUserByPhone(phoneNumber);
+    }
+
+    const isNewUser = !user;
     if (!user) {
-      // Try lookup by phone or create user
+      // Initial user stub awaiting resident onboarding
       user = await repo.createUser({
         id: uid,
         cognitoSub: `fb-${uid}`,
@@ -47,6 +57,7 @@ export async function POST(req: NextRequest) {
         mobile: phoneNumber,
         fullName: 'Resident Member',
         gender: 'PREFER_NOT_TO_SAY',
+        profileCompleted: false,
         createdAt: new Date().toISOString(),
       });
     }
@@ -59,9 +70,9 @@ export async function POST(req: NextRequest) {
         id: `mem-${Date.now()}`,
         societyId: targetSocietyId,
         userId: user.id,
-        flatNumber: 'B-New',
+        flatNumber: 'Pending Verification',
         role: 'RESIDENT',
-        status: society?.settings.require_admin_approval ? 'PENDING_APPROVAL' : 'ACTIVE',
+        status: 'PENDING_APPROVAL',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

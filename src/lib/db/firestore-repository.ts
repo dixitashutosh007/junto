@@ -104,6 +104,26 @@ export class FirestoreRepository implements ISocietyRepository {
     return snap.docs[0].data() as User;
   }
 
+  async getUserByPhone(mobile: string): Promise<User | null> {
+    const snap = await this.db
+      .collection('users')
+      .where('mobile', '==', mobile)
+      .limit(1)
+      .get();
+    if (snap.empty) {
+      // Also try with/without leading +91
+      const normalized = mobile.startsWith('+91') ? mobile.replace('+91', '') : `+91${mobile}`;
+      const snap2 = await this.db
+        .collection('users')
+        .where('mobile', '==', normalized)
+        .limit(1)
+        .get();
+      if (snap2.empty) return null;
+      return snap2.docs[0].data() as User;
+    }
+    return snap.docs[0].data() as User;
+  }
+
   async createUser(user: User): Promise<User> {
     await this.db.collection('users').doc(user.id).set(user);
     return user;

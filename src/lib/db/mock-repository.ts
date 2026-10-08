@@ -563,6 +563,17 @@ export class MockDynamoRepository implements ISocietyRepository {
     return null;
   }
 
+  async getUserByPhone(mobile: string): Promise<User | null> {
+    const cleanTarget = mobile.replace(/\D/g, '');
+    for (const u of this.users.values()) {
+      const cleanU = (u.mobile || '').replace(/\D/g, '');
+      if (cleanU === cleanTarget || (cleanU.length >= 10 && cleanTarget.endsWith(cleanU.slice(-10)))) {
+        return u;
+      }
+    }
+    return null;
+  }
+
   async createUser(user: User): Promise<User> {
     this.users.set(user.id, user);
     return user;

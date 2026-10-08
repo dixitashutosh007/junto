@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest) {
   if (!auth) return errorResponse('Unauthorized', 401);
 
   const body = await req.json().catch(() => ({}));
-  const { fullName, email, mobile, flatNumber, commuteIntent, workLocationName, gender } = body;
+  const { fullName, email, mobile, flatNumber, commuteIntent, workLocationName, gender, profileCompleted } = body;
 
   const repo = getRepository();
 
@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest) {
   if (commuteIntent) userUpdates.commuteIntent = commuteIntent;
   if (workLocationName !== undefined) userUpdates.workLocationName = workLocationName;
   if (gender) userUpdates.gender = gender;
+  if (profileCompleted !== undefined) userUpdates.profileCompleted = Boolean(profileCompleted);
 
   const updatedUser = await repo.updateUser(auth.userId, userUpdates);
 

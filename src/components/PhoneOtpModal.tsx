@@ -77,15 +77,20 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
     setLoading(true);
 
     try {
-      let idToken = 'dev-token-usr-offerer-001';
-      let verifiedUser: any = { phoneNumber: phone, uid: 'usr-offerer-001' };
+      const isProd = process.env.NODE_ENV === 'production';
+      let idToken: string;
+      let verifiedUser: any;
 
-      if (verificationCode === '123456' || !confirmationResult) {
-        // Map common dev numbers or create user
+      if (!isProd && (verificationCode === '123456' || !confirmationResult)) {
+        // Dev/testing environment bypass only
         if (phone.includes('9876543210')) idToken = 'dev-token-usr-admin-001';
         else if (phone.includes('9822233344')) idToken = 'dev-token-usr-seeker-001';
         else idToken = 'dev-token-usr-offerer-001';
+        verifiedUser = { phoneNumber: phone, uid: idToken.replace('dev-token-', '') };
       } else {
+        if (!confirmationResult) {
+          throw new Error('Please request an SMS verification code first.');
+        }
         const result = await confirmationResult.confirm(verificationCode);
         verifiedUser = result.user;
         idToken = await result.user.getIdToken();
