@@ -1,5 +1,6 @@
 import { ISocietyRepository } from './repository.interface';
 import { MockDynamoRepository } from './mock-repository';
+import { FirestoreRepository } from './firestore-repository';
 
 // Global singleton instance for local server memory lifecycle
 declare global {
@@ -9,17 +10,25 @@ declare global {
 
 /**
  * Repository Factory
- * Automatically uses DynamoDB in AWS/production when AWS credentials are present,
- * and falls back to the high-fidelity mock repository in local development.
+ * Automatically uses Google Cloud Firestore in production when USE_FIRESTORE is true
+ * or when FIREBASE_SERVICE_ACCOUNT_KEY is present in AWS Amplify / .env.local,
+ * and falls back seamlessly to the high-fidelity MockDynamoRepository during local development.
  */
 export function getRepository(): ISocietyRepository {
-  if (process.env.USE_AWS_DYNAMODB === 'true' && process.env.DYNAMODB_TABLE_NAME) {
-    // Dynamically require DynamoDB repository when configured
-    // For local development on localhost, MockDynamoRepository provides full fidelity
+  if (global.__societyRepoInstance) {
+    return global.__societyRepoInstance;
   }
 
-  if (!global.__societyRepoInstance) {
+  const useFirestore =
+    process.env.USE_FIRESTORE === 'true' ||
+    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+
+  if (useFirestore) {
+    console.info('🚀 SocietyApps: Initializing Google Cloud Firestore repository');
+    global.__societyRepoInstance = new FirestoreRepository();
+  } else {
     global.__societyRepoInstance = new MockDynamoRepository();
   }
+
   return global.__societyRepoInstance;
 }

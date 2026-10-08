@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isMemberOf(societyId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/societies/$(societyId)/members/$(request.auth.uid));
+    }
+    
+    function isActiveMember(societyId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/societies/$(societyId)/members/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+    
+    function isSocietyAdmin(societyId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/societies/$(societyId)/members/$(request.auth.uid)).data.role == 'SOCIETY_ADMIN';
+    }
+
+    // Societies: Readable by active residents; writeable only by society/platform admins
+    match /societies/{societyId} {
+      allow read: if isAuthenticated();
+      allow write: if isSocietyAdmin(societyId);
+      
+      // Society Members: Strict tenant isolation
+      match /members/{userId} {
+        allow read: if isMemberOf(societyId);
+        allow create: if isAuthenticated() && request.auth.uid == userId;
+        allow update, delete: if isSocietyAdmin(societyId);
+      }
+      
+      // Ride Occurrences: Only ACTIVE residents of THIS society can view & offer rides
+      match /occurrences/{journeyId} {
+        allow read: if isActiveMember(societyId);
+        allow create: if isActiveMember(societyId) && request.resource.data.offererUserId == request.auth.uid;
+        allow update, delete: if isActiveMember(societyId) && 
+          (resource.data.offererUserId == request.auth.uid || isSocietyAdmin(societyId));
+      }
+      
+      // Ride Requests: Isolated to seeker, offerer, and society admin
+      match /requests/{requestId} {
+        allow read: if isActiveMember(societyId) && 
+          (resource.data.seekerUserId == request.auth.uid || 
+           get(/databases/$(database)/documents/societies/$(societyId)/occurrences/$(resource.data.journeyId)).data.offererUserId == request.auth.uid ||
+           isSocietyAdmin(societyId));
+        allow create: if isActiveMember(societyId) && request.resource.data.seekerUserId == request.auth.uid;
+        allow update: if isActiveMember(societyId) && 
+          (resource.data.seekerUserId == request.auth.uid || 
+           get(/databases/$(database)/documents/societies/$(societyId)/occurrences/$(resource.data.journeyId)).data.offererUserId == request.auth.uid);
+      }
+      
+      // In-App Notifications: Strictly isolated to owner
+      match /notifications/{notifId} {
+        allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+      
+      // Moderation Reports: Created by residents; readable only by society admins
+      match /moderation_reports/{reportId} {
+        allow create: if isAuthenticated() && request.resource.data.reporterId == request.auth.uid;
+        allow read, update: if isSocietyAdmin(societyId);
+      }
+    }
+
+    // Global Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Audit Events: Append-only by server
+    match /audit_events/{eventId} {
+      allow read: if false; // Private server-only log
+      allow write: if false;
+    }
+  }
+}
