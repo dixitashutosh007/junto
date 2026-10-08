@@ -308,4 +308,49 @@ describe('SocietyApps V1 Core Test Suite', () => {
       expect(resolved.resolutionNotes).toBe('Discussed with resident; settled mutually');
     });
   });
+
+  describe('6. Firebase Phone Auth & Mobile Session Context', () => {
+    it('creates and resolves resident membership based on mobile phone identity', async () => {
+      const repo = new MockDynamoRepository();
+
+      // Simulate resident registration with +91 phone number
+      const phoneUser = await repo.createUser({
+        id: 'usr-phone-001',
+        cognitoSub: 'fb-usr-phone-001',
+        email: '9811199999@societyapps.org',
+        mobile: '+919811199999',
+        fullName: 'Kiran Rao',
+        gender: 'FEMALE',
+        commuteIntent: 'BOTH',
+        createdAt: new Date().toISOString(),
+      });
+
+      expect(phoneUser.mobile).toBe('+919811199999');
+
+      // Create membership in Mahaveer Ranches
+      const membership = await repo.createMembership({
+        id: 'mem-phone-001',
+        societyId: 'soc-ggh-001',
+        userId: phoneUser.id,
+        flatNumber: 'Tower A-902',
+        role: 'RESIDENT',
+        status: 'PENDING_APPROVAL',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      expect(membership.status).toBe('PENDING_APPROVAL');
+
+      // Admin approves
+      const approved = await repo.updateMembershipStatus(
+        'soc-ggh-001',
+        phoneUser.id,
+        'ACTIVE',
+        'usr-admin-001'
+      );
+
+      expect(approved.status).toBe('ACTIVE');
+      expect(approved.approvedBy).toBe('usr-admin-001');
+    });
+  });
 });

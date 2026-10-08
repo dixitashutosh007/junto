@@ -10,18 +10,28 @@ export interface AuthContext {
 }
 
 /**
- * Validates request authorization and ensures tenant boundary isolation.
- * In localhost development, defaults to current active user (Ashutosh Dixit or Priya Sharma or Vikram Mehta)
- * via `x-dev-user-id` header or standard fallback.
+ * Validates request authorization and ensures strict multi-tenant boundary isolation.
+ *
+ * Priority order:
+ * 1. HTTP-Only `societyapps_session` cookie (authenticated Firebase Phone OTP session)
+ * 2. `x-dev-user-id` header (for localhost testing & persona switcher)
+ * 3. Default fallback to primary demo resident (Ashutosh Dixit)
  */
 export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
   const repo = getRepository();
 
-  // 1. Check development mock header (for localhost testing switching personas)
-  const devUserId = req.headers.get('x-dev-user-id') || 'usr-offerer-001'; // Default: Ashutosh Dixit
-  const societyId = req.headers.get('x-society-id') || 'soc-ggh-001';
+  // 1. Resolve session userId from cookie, or development header
+  const cookieSessionUid = req.cookies.get('societyapps_session')?.value;
+  const devUserId = req.headers.get('x-dev-user-id');
+  const userId = cookieSessionUid || devUserId || 'usr-offerer-001';
 
-  const user = await repo.getUserById(devUserId);
+  // 2. Resolve target societyId
+  const cookieSocietyId = req.cookies.get('societyapps_society_id')?.value;
+  const headerSocietyId = req.headers.get('x-society-id');
+  const societyId = headerSocietyId || cookieSocietyId || 'soc-ggh-001';
+
+  // 3. Verify user and membership exist within this tenant boundary
+  const user = await repo.getUserById(userId);
   if (!user) return null;
 
   const membership = await repo.getMembership(societyId, user.id);

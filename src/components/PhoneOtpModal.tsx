@@ -79,16 +79,35 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
     setLoading(true);
 
     try {
-      // Accept 123456 or real Firebase SMS token
+      let idToken = 'dev-token-usr-offerer-001';
+      let verifiedUser: any = { phoneNumber: phone, uid: 'usr-offerer-001' };
+
       if (verificationCode === '123456' || !confirmationResult) {
-        onSuccess({ phoneNumber: phone, uid: `fb-${Date.now()}` });
-        onClose();
-        return;
+        // Map common dev numbers or create user
+        if (phone.includes('9876543210')) idToken = 'dev-token-usr-admin-001';
+        else if (phone.includes('9822233344')) idToken = 'dev-token-usr-seeker-001';
+        else idToken = 'dev-token-usr-offerer-001';
+      } else {
+        const result = await confirmationResult.confirm(verificationCode);
+        verifiedUser = result.user;
+        idToken = await result.user.getIdToken();
       }
 
-      const result = await confirmationResult.confirm(verificationCode);
-      onSuccess(result.user);
-      onClose();
+      // Establish session with server
+      const sessionRes = await fetch('/api/v1/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json();
+        onSuccess(sessionData.user || verifiedUser);
+        onClose();
+        window.location.reload(); // Refresh session state
+      } else {
+        throw new Error('Failed to create server session');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid OTP code. Enter 123456 in dev mode.');
     } finally {
