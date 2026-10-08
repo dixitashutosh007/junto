@@ -51,12 +51,20 @@ export interface User {
   createdAt: string;
 }
 
+export interface AdminPermissions {
+  canApproveResidents?: boolean;
+  canManageSettings?: boolean;
+  canModerateReports?: boolean;
+  canViewAuditLogs?: boolean;
+}
+
 export interface SocietyMembership {
   id: string;
   societyId: string;
   userId: string;
   flatNumber: string;
   role: MembershipRole;
+  permissions?: AdminPermissions;
   status: MembershipStatus;
   approvedBy?: string;
   approvedAt?: string;

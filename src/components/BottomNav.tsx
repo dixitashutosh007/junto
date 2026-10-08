@@ -3,26 +3,48 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Car, Clock, ShieldCheck, User } from 'lucide-react';
+import { Home, Search, Car, Clock, ShieldCheck, User, Users, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { membership, isAuthenticated } = useAuth();
-  const isAdmin = membership?.role === 'SOCIETY_ADMIN';
+  const { membership, isAuthenticated, activePersona } = useAuth();
 
   if (!isAuthenticated) {
     return null;
   }
 
-  const navItems = [
-    { label: 'Home', href: '/', icon: Home },
-    { label: 'Find', href: '/rides/find', icon: Search },
-    { label: 'Offer', href: '/rides/offer', icon: Car },
-    { label: 'My Activity', href: '/rides/my-rides', icon: Clock },
-    { label: 'Profile', href: '/profile', icon: User },
-    ...(isAdmin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
-  ];
+  const role = membership?.role || 'RESIDENT';
+  const isSocietyAdmin = role === 'SOCIETY_ADMIN' || activePersona === 'usr-admin-001';
+  const isAppAdmin = role === 'SUPER_ADMIN' || activePersona === 'usr-app-admin-001';
+
+  let navItems = [];
+
+  if (isSocietyAdmin || isAppAdmin) {
+    // Admin View: focused exclusively on management, approvals, moderation and activity logs
+    navItems = [
+      { label: 'Admin Portal', href: '/admin', icon: ShieldCheck },
+      { label: 'Residents', href: '/admin?tab=MEMBERS', icon: Users },
+      { label: 'Moderation', href: '/admin?tab=MODERATION', icon: ShieldAlert },
+      { label: 'Profile', href: '/profile', icon: User },
+    ];
+  } else if (activePersona === 'usr-offerer-001') {
+    // Offerer View
+    navItems = [
+      { label: 'Home', href: '/', icon: Home },
+      { label: 'Offer Ride', href: '/rides/offer', icon: Car },
+      { label: 'My Rides', href: '/rides/my-rides', icon: Clock },
+      { label: 'Profile', href: '/profile', icon: User },
+    ];
+  } else {
+    // Seeker / General Resident View
+    navItems = [
+      { label: 'Home', href: '/', icon: Home },
+      { label: 'Find Ride', href: '/rides/find', icon: Search },
+      { label: 'My Requests', href: '/rides/my-requests', icon: Clock },
+      { label: 'Profile', href: '/profile', icon: User },
+    ];
+  }
 
   return (
     <nav className="sticky bottom-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 py-2 shadow-lg">

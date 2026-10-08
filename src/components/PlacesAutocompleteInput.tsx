@@ -125,7 +125,7 @@ export function PlacesAutocompleteInput({
           }}
           onChange={handleInputChange}
           placeholder={placeholder}
-          className="w-full text-xs pl-9 pr-8 py-2.5 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+          className="w-full text-xs font-semibold text-slate-900 placeholder:text-slate-400 pl-9 pr-8 py-2.5 rounded-xl border border-zinc-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white shadow-2xs"
         />
 
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">

@@ -126,6 +126,7 @@ export interface ISocietyRepository {
 
   // Auditing
   recordAuditEvent(event: AuditEvent): Promise<void>;
+  listAuditEvents(societyId: string): Promise<AuditEvent[]>;
 
   // In-App & Push Notifications
   createNotification(notification: InAppNotification): Promise<InAppNotification>;

@@ -112,7 +112,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
         throw new Error('Failed to create server session');
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid OTP code. Enter 123456 in dev mode.');
+      setError(err.message || 'Invalid or expired OTP code. Please check and retry.');
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
           <p className="text-xs text-zinc-500 mt-1">
             {step === 'PHONE'
               ? 'We will send a 6-digit OTP to verify your resident identity.'
-              : `Code sent to ${phone}. Enter 123456 for instant dev access.`}
+              : `Enter the 6-digit verification code sent to ${phone}.`}
           </p>
         </div>
 

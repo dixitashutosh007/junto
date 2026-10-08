@@ -117,48 +117,6 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           <Building2 className="w-4 h-4 text-emerald-400" />
           <span>New Resident? Register with Code ({society?.code || 'MR2024'})</span>
         </Link>
-
-        {/* Instant Dev / Preview Mode Bypass */}
-        <div className="pt-2 text-center">
-          <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
-            <span>Explore as Demo:</span>
-            <button
-              onClick={async () => {
-                localStorage.setItem('junto_demo_mode', 'true');
-                localStorage.removeItem('societyapps_logged_out');
-                switchPersona('usr-offerer-001');
-                window.location.reload();
-              }}
-              className="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer"
-            >
-              Offerer
-            </button>
-            <span>·</span>
-            <button
-              onClick={async () => {
-                localStorage.setItem('junto_demo_mode', 'true');
-                localStorage.removeItem('societyapps_logged_out');
-                switchPersona('usr-seeker-001');
-                window.location.reload();
-              }}
-              className="text-teal-400 hover:text-teal-300 font-bold underline cursor-pointer"
-            >
-              Seeker
-            </button>
-            <span>·</span>
-            <button
-              onClick={async () => {
-                localStorage.setItem('junto_demo_mode', 'true');
-                localStorage.removeItem('societyapps_logged_out');
-                switchPersona('usr-admin-001');
-                window.location.reload();
-              }}
-              className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
-            >
-              Admin
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Firebase Phone Auth OTP Modal */}

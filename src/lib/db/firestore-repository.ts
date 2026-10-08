@@ -571,6 +571,17 @@ export class FirestoreRepository implements ISocietyRepository {
     await this.db.collection('audit_events').doc(event.id).set(event);
   }
 
+  async listAuditEvents(societyId: string): Promise<AuditEvent[]> {
+    const snap = await this.db
+      .collection('audit_events')
+      .where('societyId', '==', societyId)
+      .limit(100)
+      .get();
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as AuditEvent)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
   // In-App & Push Notifications
   async createNotification(notification: InAppNotification): Promise<InAppNotification> {
     await this.db

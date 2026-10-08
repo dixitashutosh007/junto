@@ -19,20 +19,38 @@ import {
   Save,
   Flag,
   ShieldAlert,
+  History,
+  KeyRound,
+  Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const { activePersona, society, refreshAuth } = useAuth();
+  const { activePersona, society, refreshAuth, membership } = useAuth();
+  const isSuperAdmin = membership?.role === 'SUPER_ADMIN' || activePersona === 'usr-app-admin-001';
 
-  // Tab State: 'MEMBERS' | 'MODERATION' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'MODERATION' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'>('MEMBERS');
+  // Tab State: 'MEMBERS' | 'MODERATION' | 'ACTIVITY_LOGS' | 'RBAC' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'MODERATION' | 'ACTIVITY_LOGS' | 'RBAC' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'>('MEMBERS');
 
   // Members State
   const [membersView, setMembersView] = useState<'PENDING' | 'ALL'>('PENDING');
   const [pendingMembers, setPendingMembers] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+
+  // Activity Logs State (Requirement 7)
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  // RBAC State (Requirement 6)
+  const [editingRbacUserId, setEditingRbacUserId] = useState<string | null>(null);
+  const [rbacRole, setRbacRole] = useState<'RESIDENT' | 'SOCIETY_ADMIN' | 'SUPER_ADMIN'>('RESIDENT');
+  const [rbacPerms, setRbacPerms] = useState({
+    canApproveResidents: true,
+    canManageSettings: true,
+    canModerateReports: true,
+    canViewAuditLogs: true,
+  });
 
   // Moderation Reports State
   const [reports, setReports] = useState<any[]>([]);
@@ -126,9 +144,67 @@ export default function AdminPage() {
     }
   };
 
+  // Member Status Filter: 'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED'
+  const [memberStatusFilter, setMemberStatusFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+
+  const loadAuditLogs = async () => {
+    try {
+      setLoadingLogs(true);
+      const res = await fetch('/api/v1/admin/audit-logs', {
+        headers: {
+          'x-dev-user-id': activePersona,
+          'x-society-id': 'soc-ggh-001',
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAuditLogs(data.events || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleSaveRbac = async (targetUserId: string) => {
+    try {
+      setIsSaving(true);
+      const res = await fetch('/api/v1/admin/rbac', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-id': activePersona,
+          'x-society-id': 'soc-ggh-001',
+        },
+        body: JSON.stringify({
+          targetUserId,
+          role: rbacRole,
+          permissions: rbacPerms,
+        }),
+      });
+      if (res.ok) {
+        setMessage('Role & permissions successfully updated!');
+        setEditingRbacUserId(null);
+        loadMembers();
+        loadAuditLogs();
+        setTimeout(() => setMessage(''), 4000);
+      } else {
+        const data = await res.json();
+        setMessage(`Error: ${data.error || 'Failed to update RBAC'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage('Failed to update RBAC');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     loadMembers();
     loadReports();
+    loadAuditLogs();
     if (society) {
       setSocietyName(society.name);
       setSocietyAddress(society.address);
@@ -254,20 +330,20 @@ export default function AdminPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center p-1 bg-zinc-100 rounded-xl mb-4 text-xs font-semibold text-zinc-600">
+      <div className="flex items-center p-1 bg-zinc-100 rounded-xl mb-4 text-xs font-semibold text-zinc-600 overflow-x-auto">
         <button
           onClick={() => setActiveTab('MEMBERS')}
-          className={`flex-1 py-2 rounded-lg transition-all ${
+          className={`flex-1 min-w-[70px] py-2 px-2 text-center rounded-lg transition-all ${
             activeTab === 'MEMBERS'
               ? 'bg-white text-zinc-900 shadow-xs'
               : 'hover:text-zinc-900'
           }`}
         >
-          Members ({pendingMembers.length > 0 ? `${pendingMembers.length}` : 'All'})
+          Members ({pendingMembers.length > 0 ? `${pendingMembers.length}` : allMembers.length})
         </button>
         <button
           onClick={() => setActiveTab('MODERATION')}
-          className={`flex-1 py-2 rounded-lg transition-all ${
+          className={`flex-1 min-w-[65px] py-2 px-2 text-center rounded-lg transition-all ${
             activeTab === 'MODERATION'
               ? 'bg-white text-zinc-900 shadow-xs'
               : 'hover:text-zinc-900'
@@ -276,8 +352,32 @@ export default function AdminPage() {
           Reports ({reports.filter((r) => r.status === 'OPEN').length})
         </button>
         <button
+          onClick={() => setActiveTab('ACTIVITY_LOGS')}
+          className={`flex-1 min-w-[65px] py-2 px-2 text-center rounded-lg transition-all flex items-center justify-center gap-1 ${
+            activeTab === 'ACTIVITY_LOGS'
+              ? 'bg-white text-zinc-900 shadow-xs'
+              : 'hover:text-zinc-900'
+          }`}
+        >
+          <History className="w-3 h-3" />
+          <span>Logs</span>
+        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => setActiveTab('RBAC')}
+            className={`flex-1 min-w-[65px] py-2 px-2 text-center rounded-lg transition-all flex items-center justify-center gap-1 ${
+              activeTab === 'RBAC'
+                ? 'bg-white text-zinc-900 shadow-xs text-indigo-700'
+                : 'hover:text-zinc-900 text-indigo-600'
+            }`}
+          >
+            <Lock className="w-3 h-3" />
+            <span>RBAC</span>
+          </button>
+        )}
+        <button
           onClick={() => setActiveTab('SOCIETY_DETAILS')}
-          className={`flex-1 py-2 rounded-lg transition-all ${
+          className={`flex-1 min-w-[55px] py-2 px-2 text-center rounded-lg transition-all ${
             activeTab === 'SOCIETY_DETAILS'
               ? 'bg-white text-zinc-900 shadow-xs'
               : 'hover:text-zinc-900'
@@ -287,7 +387,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setActiveTab('COMMUTE_SETTINGS')}
-          className={`flex-1 py-2 rounded-lg transition-all ${
+          className={`flex-1 min-w-[65px] py-2 px-2 text-center rounded-lg transition-all ${
             activeTab === 'COMMUTE_SETTINGS'
               ? 'bg-white text-zinc-900 shadow-xs'
               : 'hover:text-zinc-900'
@@ -300,12 +400,15 @@ export default function AdminPage() {
       {/* TAB 1: MEMBERS MANAGEMENT */}
       {activeTab === 'MEMBERS' && (
         <div className="flex-1 flex flex-col">
-          {/* Sub-Filter (Pending vs All) */}
-          <div className="flex items-center justify-between mb-3">
+          {/* Sub-Filter (Pending vs All & Status Pills) */}
+          <div className="flex flex-col gap-2 mb-3">
             <div className="flex gap-2">
               <button
-                onClick={() => setMembersView('PENDING')}
-                className={`text-xs px-3 py-1 rounded-full font-semibold transition-all ${
+                onClick={() => {
+                  setMembersView('PENDING');
+                  setMemberStatusFilter('PENDING');
+                }}
+                className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all ${
                   membersView === 'PENDING'
                     ? 'bg-zinc-900 text-white'
                     : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
@@ -314,8 +417,11 @@ export default function AdminPage() {
                 Pending Approvals ({pendingMembers.length})
               </button>
               <button
-                onClick={() => setMembersView('ALL')}
-                className={`text-xs px-3 py-1 rounded-full font-semibold transition-all ${
+                onClick={() => {
+                  setMembersView('ALL');
+                  setMemberStatusFilter('ALL');
+                }}
+                className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all ${
                   membersView === 'ALL'
                     ? 'bg-zinc-900 text-white'
                     : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
@@ -324,6 +430,25 @@ export default function AdminPage() {
                 All Residents ({allMembers.length})
               </button>
             </div>
+
+            {membersView === 'ALL' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                <span className="text-[11px] text-zinc-400 font-medium mr-1">Filter:</span>
+                {(['ALL', 'ACTIVE', 'PENDING', 'SUSPENDED'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setMemberStatusFilter(st)}
+                    className={`text-[11px] px-2.5 py-0.5 rounded-md font-medium transition-colors ${
+                      memberStatusFilter === st
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                    }`}
+                  >
+                    {st === 'ALL' ? 'All' : st === 'ACTIVE' ? 'Active / Approved' : st === 'PENDING' ? 'Pending' : 'Suspended / Blocked'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {loadingMembers ? (
@@ -345,6 +470,9 @@ export default function AdminPage() {
                         <h3 className="font-semibold text-sm text-zinc-900">{mem.user.fullName}</h3>
                         <p className="text-xs text-zinc-500 font-medium">Flat {mem.flatNumber}</p>
                         <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">{mem.user.mobile}</p>
+                        {mem.user.email && (
+                          <p className="text-[11px] text-zinc-400 font-mono">{mem.user.email}</p>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                         Awaiting Approval
@@ -372,80 +500,170 @@ export default function AdminPage() {
           ) : (
             /* ALL MEMBERS ROSTER WITH BLOCK / SUSPEND */
             <div className="space-y-3">
-              {allMembers.map((mem) => {
-                const isActive = mem.status === 'ACTIVE';
-                const isSuspended = mem.status === 'SUSPENDED';
-                const isBlocked = mem.status === 'DEACTIVATED';
-                const isPending = mem.status === 'PENDING_APPROVAL';
+              {allMembers
+                .filter((mem) => {
+                  if (memberStatusFilter === 'ALL') return true;
+                  if (memberStatusFilter === 'ACTIVE') return mem.status === 'ACTIVE';
+                  if (memberStatusFilter === 'PENDING') return mem.status === 'PENDING_APPROVAL';
+                  if (memberStatusFilter === 'SUSPENDED') return mem.status === 'SUSPENDED' || mem.status === 'DEACTIVATED' || mem.status === 'REJECTED';
+                  return true;
+                })
+                .map((mem) => {
+                  const isActive = mem.status === 'ACTIVE';
+                  const isSuspended = mem.status === 'SUSPENDED';
+                  const isBlocked = mem.status === 'DEACTIVATED';
+                  const isPending = mem.status === 'PENDING_APPROVAL';
+
+                  return (
+                    <div
+                      key={mem.id}
+                      className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-zinc-900">
+                              {mem.user.fullName}
+                            </span>
+                            {mem.role === 'SOCIETY_ADMIN' && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-900 text-white">
+                                Admin
+                              </span>
+                            )}
+                            {mem.role === 'SUPER_ADMIN' && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                                Super Admin
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500">Flat {mem.flatNumber || 'Unassigned'}</p>
+                          <p className="text-[11px] text-zinc-400 font-mono">{mem.user.mobile}</p>
+                          {mem.user.email && (
+                            <p className="text-[11px] text-zinc-400 font-mono">{mem.user.email}</p>
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isPending
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
+                        >
+                          {mem.status}
+                        </span>
+                      </div>
+
+                      {mem.role !== 'SUPER_ADMIN' && (
+                        <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 text-xs">
+                          {isActive && (
+                            <>
+                              <button
+                                onClick={() => handleMemberAction(mem.userId, 'SUSPEND')}
+                                className="px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 font-medium"
+                              >
+                                Suspend
+                              </button>
+                              <button
+                                onClick={() => handleMemberAction(mem.userId, 'BLOCK')}
+                                className="px-2.5 py-1 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 font-medium"
+                              >
+                                Block User
+                              </button>
+                            </>
+                          )}
+                          {(isSuspended || isBlocked) && (
+                            <button
+                              onClick={() => handleMemberAction(mem.userId, 'REACTIVATE')}
+                              className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+                            >
+                              Reactivate Resident
+                            </button>
+                          )}
+                          {isPending && (
+                            <button
+                              onClick={() => handleMemberAction(mem.userId, 'APPROVE')}
+                              className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+                            >
+                              Approve
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: ACTIVITY LOGS (Requirement 7) */}
+      {activeTab === 'ACTIVITY_LOGS' && (
+        <div className="flex-1 flex flex-col">
+          <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 mb-3 text-xs text-zinc-600 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-zinc-900 block mb-0.5">Society Activities & Audit Trail</span>
+              <p className="text-[11px] text-zinc-500">
+                Transparent log of all administrative actions, resident approvals, status changes, and settings updates.
+              </p>
+            </div>
+            <button
+              onClick={loadAuditLogs}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-100 shadow-2xs"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingLogs ? (
+            <div className="py-12 text-center text-xs text-zinc-400">Loading activity logs...</div>
+          ) : auditLogs.length === 0 ? (
+            <div className="p-8 text-center bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
+              <History className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-zinc-700">No activity logged yet</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Administrative and lifecycle events will appear here automatically.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {auditLogs.map((log) => {
+                const actionBadgeColor =
+                  log.action.includes('APPROVE')
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : log.action.includes('REJECT') || log.action.includes('BLOCK') || log.action.includes('SUSPEND')
+                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                    : log.action.includes('RBAC')
+                    ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                    : 'bg-zinc-100 text-zinc-800 border-zinc-200';
 
                 return (
                   <div
-                    key={mem.id}
-                    className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2"
+                    key={log.id}
+                    className="p-3.5 bg-white rounded-xl border border-zinc-200 shadow-2xs space-y-2 text-xs"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-zinc-900">
-                            {mem.user.fullName}
-                          </span>
-                          {mem.role === 'SOCIETY_ADMIN' && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-900 text-white">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-zinc-500">Flat {mem.flatNumber}</p>
-                        <p className="text-[11px] text-zinc-400 font-mono">{mem.user.mobile}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${actionBadgeColor}`}>
+                          {log.action.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-zinc-500 text-[11px]">by</span>
+                        <span className="font-semibold text-zinc-900 text-[11px]">{log.actorName || 'Admin'}</span>
                       </div>
-
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isActive
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : isPending
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {mem.status}
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {new Date(log.createdAt).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </span>
                     </div>
 
-                    {mem.role !== 'SOCIETY_ADMIN' && (
-                      <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 text-xs">
-                        {isActive && (
-                          <>
-                            <button
-                              onClick={() => handleMemberAction(mem.userId, 'SUSPEND')}
-                              className="px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 font-medium"
-                            >
-                              Suspend
-                            </button>
-                            <button
-                              onClick={() => handleMemberAction(mem.userId, 'BLOCK')}
-                              className="px-2.5 py-1 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 font-medium"
-                            >
-                              Block User
-                            </button>
-                          </>
-                        )}
-                        {(isSuspended || isBlocked) && (
-                          <button
-                            onClick={() => handleMemberAction(mem.userId, 'REACTIVATE')}
-                            className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
-                          >
-                            Reactivate Resident
-                          </button>
-                        )}
-                        {isPending && (
-                          <button
-                            onClick={() => handleMemberAction(mem.userId, 'APPROVE')}
-                            className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
-                          >
-                            Approve
-                          </button>
-                        )}
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <div className="bg-zinc-50 p-2 rounded-lg font-mono text-[10px] text-zinc-600 border border-zinc-100 overflow-x-auto">
+                        {JSON.stringify(log.metadata, null, 2)}
                       </div>
                     )}
                   </div>
@@ -453,6 +671,169 @@ export default function AdminPage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: RBAC CONTROL (Requirement 6 - App Admin Only) */}
+      {activeTab === 'RBAC' && (
+        <div className="flex-1 flex flex-col">
+          <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-200/80 mb-3 text-xs text-indigo-950">
+            <span className="font-semibold block mb-0.5 flex items-center gap-1.5">
+              <KeyRound className="w-4 h-4 text-indigo-600" />
+              Role-Based Access Control (RBAC)
+            </span>
+            <p className="text-[11px] text-indigo-800 leading-relaxed">
+              As App Admin, designate which residents become Society Admins and configure granular management permissions.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {allMembers.map((mem) => {
+              const isEditing = editingRbacUserId === mem.userId;
+              const isCurrentSuper = mem.role === 'SUPER_ADMIN';
+
+              return (
+                <div
+                  key={mem.id}
+                  className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-2xs space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-zinc-900">{mem.user.fullName}</span>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                            mem.role === 'SUPER_ADMIN'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : mem.role === 'SOCIETY_ADMIN'
+                              ? 'bg-zinc-900 text-white'
+                              : 'bg-zinc-100 text-zinc-700'
+                          }`}
+                        >
+                          {mem.role}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        Flat {mem.flatNumber || 'N/A'} • {mem.user.mobile}
+                      </p>
+                    </div>
+
+                    {!isCurrentSuper && (
+                      <button
+                        onClick={() => {
+                          if (isEditing) {
+                            setEditingRbacUserId(null);
+                          } else {
+                            setEditingRbacUserId(mem.userId);
+                            setRbacRole(mem.role);
+                            setRbacPerms(
+                              mem.permissions || {
+                                canApproveResidents: true,
+                                canManageSettings: true,
+                                canModerateReports: true,
+                                canViewAuditLogs: true,
+                              }
+                            );
+                          }
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-semibold border transition-all ${
+                          isEditing
+                            ? 'bg-zinc-100 border-zinc-300 text-zinc-700'
+                            : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {isEditing ? 'Cancel' : 'Edit Permissions'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Editing Panel */}
+                  {isEditing && (
+                    <div className="pt-3 border-t border-zinc-100 space-y-3 bg-zinc-50/60 p-3 rounded-xl">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-700 block mb-1">
+                          Assigned Persona / Role
+                        </label>
+                        <select
+                          value={rbacRole}
+                          onChange={(e) => setRbacRole(e.target.value as any)}
+                          className="w-full text-xs p-2 rounded-lg border border-zinc-300 bg-white"
+                        >
+                          <option value="RESIDENT">RESIDENT (Commuter only)</option>
+                          <option value="SOCIETY_ADMIN">SOCIETY_ADMIN (Society Manager)</option>
+                        </select>
+                      </div>
+
+                      {rbacRole === 'SOCIETY_ADMIN' && (
+                        <div>
+                          <label className="text-[11px] font-bold text-zinc-700 block mb-1.5">
+                            Granular Society Admin Capabilities
+                          </label>
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={rbacPerms.canApproveResidents}
+                                onChange={(e) =>
+                                  setRbacPerms((p) => ({ ...p, canApproveResidents: e.target.checked }))
+                                }
+                                className="w-4 h-4 text-indigo-600 rounded-sm"
+                              />
+                              <span>Approve & reject new residents</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={rbacPerms.canManageSettings}
+                                onChange={(e) =>
+                                  setRbacPerms((p) => ({ ...p, canManageSettings: e.target.checked }))
+                                }
+                                className="w-4 h-4 text-indigo-600 rounded-sm"
+                              />
+                              <span>Update society settings, rules & detour threshold</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={rbacPerms.canModerateReports}
+                                onChange={(e) =>
+                                  setRbacPerms((p) => ({ ...p, canModerateReports: e.target.checked }))
+                                }
+                                className="w-4 h-4 text-indigo-600 rounded-sm"
+                              />
+                              <span>Moderate safety reports & resolve user flags</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={rbacPerms.canViewAuditLogs}
+                                onChange={(e) =>
+                                  setRbacPerms((p) => ({ ...p, canViewAuditLogs: e.target.checked }))
+                                }
+                                className="w-4 h-4 text-indigo-600 rounded-sm"
+                              />
+                              <span>View audit logs & activity history</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={() => handleSaveRbac(mem.userId)}
+                          disabled={isSaving}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 shadow-xs flex items-center gap-1.5"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>{isSaving ? 'Saving...' : 'Save RBAC Permissions'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

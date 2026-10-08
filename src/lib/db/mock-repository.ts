@@ -509,6 +509,40 @@ export class MockDynamoRepository implements ISocietyRepository {
       updatedAt: new Date().toISOString(),
     };
     this.occurrences.set(`${societyId}#${journey3DayAfter.id}`, journey3DayAfter);
+
+    // Initial Audit Events for Mahaveer Ranches
+    this.auditEvents.push(
+      {
+        id: 'audit-001',
+        societyId,
+        actorUserId: adminUser.id,
+        action: 'RESIDENT_APPROVED',
+        entityType: 'MEMBERSHIP',
+        entityId: 'mem-offerer-001',
+        metadata: { residentName: 'Ashutosh Dixit', flat: 'Tower B-804' },
+        createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      },
+      {
+        id: 'audit-002',
+        societyId,
+        actorUserId: adminUser.id,
+        action: 'SOCIETY_SETTINGS_UPDATED',
+        entityType: 'SOCIETY',
+        entityId: societyId,
+        metadata: { maxDetourMinutes: 10, requireAdminApproval: true },
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+      {
+        id: 'audit-003',
+        societyId,
+        actorUserId: platformAdminUser.id,
+        action: 'RBAC_ROLE_ASSIGNED',
+        entityType: 'MEMBERSHIP',
+        entityId: 'mem-admin-001',
+        metadata: { targetUserId: adminUser.id, role: 'SOCIETY_ADMIN' },
+        createdAt: new Date(Date.now() - 43200000).toISOString(),
+      }
+    );
   }
 
   // Societies
@@ -907,6 +941,12 @@ export class MockDynamoRepository implements ISocietyRepository {
   // Auditing
   async recordAuditEvent(event: AuditEvent): Promise<void> {
     this.auditEvents.push(event);
+  }
+
+  async listAuditEvents(societyId: string): Promise<AuditEvent[]> {
+    return this.auditEvents
+      .filter((e) => e.societyId === societyId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   // In-App & Push Notifications

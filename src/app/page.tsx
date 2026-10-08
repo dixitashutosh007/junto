@@ -112,7 +112,8 @@ export default function HomePage() {
     return <SplashScreen />;
   }
 
-  const needsOnboarding = user && (!user.profileCompleted || user.fullName === 'Resident Member');
+  // Check onboarding necessity: only when user has not completed onboarding and is not already submitted for approval
+  const needsOnboarding = user && user.profileCompleted === false && user.fullName === 'Resident Member' && membership?.status !== 'PENDING_APPROVAL';
   const isPendingApproval = membership?.status === 'PENDING_APPROVAL' || membership?.status === 'REGISTERED';
   const isRejected = membership?.status === 'REJECTED' || membership?.status === 'SUSPENDED';
 
