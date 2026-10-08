@@ -36,6 +36,8 @@ export type MembershipStatus =
 export interface User {
   id: string;
   cognitoSub: string;
+  /** Firebase Auth UID linked at phone sign-in, when it differs from id */
+  firebaseUid?: string;
   email: string;
   mobile: string;
   fullName: string;

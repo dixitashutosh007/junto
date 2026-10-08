@@ -59,15 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAuth = async (personaId: string, societyId: string) => {
     try {
       setIsLoading(true);
-      // In production, do not send dev persona override header unless in demo preview mode
-      const isProd = process.env.NODE_ENV === 'production';
-      const isDemoMode = typeof window !== 'undefined' && localStorage.getItem('junto_demo_mode') === 'true';
-
       const headers: Record<string, string> = {
         'x-society-id': societyId,
       };
 
-      if (!isProd || isDemoMode) {
+      // Demo personas exist only in development; production uses the session cookie
+      if (process.env.NODE_ENV !== 'production') {
         headers['x-dev-user-id'] = personaId;
       }
 
@@ -130,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setMembership(null);
     setIsLoggedOut(true);
-    localStorage.removeItem('junto_demo_mode');
     localStorage.setItem('societyapps_logged_out', 'true');
   };
 

@@ -23,7 +23,7 @@ Set up guard-rails so later phases can be verified.
 
 ---
 
-## Phase 1 — Authentication & session (🔴, 1–2 days)
+## Phase 1 — Authentication & session (🔴, 1–2 days) ✅ Done
 
 Right now anyone can impersonate any user, including admins, by setting a cookie.
 
@@ -39,6 +39,18 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 | 1.8 | Rate-limit OTP send; enable Firebase App Check | `PhoneOtpModal.tsx`, Firebase console |
 
 **Done when:** tests prove a forged cookie, a `x-dev-user-id` header, and a PENDING member all get 401/403 in production mode.
+
+**Implementation notes:**
+- Sessions: `src/lib/auth/session.ts` (cookie `junto_session`, 14-day Firebase session cookie, revocation checked on every request). Routes use `requireAuth(req, { statuses, roles })` from `src/lib/api-auth.ts`.
+- Users signing in for the first time are linked to existing residents by verified phone number (`User.firebaseUid`).
+- `/auth/register` now completes registration for a signed-in user; the join page asks for phone OTP first and uses the code from the link.
+- Mobile changes go through `POST /api/v1/auth/phone` (Firebase `updatePhoneNumber`). Email is stored as unverified contact info; a real verification link is deferred to Phase 5.
+- OTP: 30-second resend cooldown in the UI, per-IP limit on session creation, per-user limit on phone changes (in-memory; shared store in task 2.5).
+
+**Console steps for the owner (not code):**
+1. Firebase → App Check: register the web app with reCAPTCHA Enterprise, set `NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY` in Amplify, then enforce App Check for Authentication.
+2. Firebase → Authentication → Settings: confirm SMS region policy allows only India (+91).
+3. Amplify: confirm `FIREBASE_SERVICE_ACCOUNT_KEY` (or `_B64`) is set — production now refuses to start without it.
 
 ---
 

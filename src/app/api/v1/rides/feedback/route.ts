@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { Feedback } from '@/types';
 import { FeedbackSchema } from '@/lib/validation/schemas';
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json().catch(() => ({}));
   const parseResult = FeedbackSchema.safeParse(body);
@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
 // GET qualitative feedback badges received by a user
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const targetUserId = searchParams.get('userId') || auth.userId;

@@ -23,6 +23,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Vehicle } from '@/types';
+import { PhoneAuthProvider, updatePhoneNumber } from 'firebase/auth';
+import { firebaseAuth } from '@/lib/firebase/config';
+import {
+  DEV_OTP_BYPASS_ENABLED,
+  DEV_TEST_OTP,
+  getRecaptchaVerifier,
+  resetRecaptchaVerifier,
+  toE164IndianMobile,
+} from '@/lib/firebase/phone';
+
+const PROFILE_RECAPTCHA_ID = 'profile-recaptcha';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
 
@@ -58,12 +69,11 @@ export default function ProfilePage() {
   const [phoneOtpStep, setPhoneOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
   const [phoneOtpCode, setPhoneOtpCode] = useState('');
   const [verifyingPhone, setVerifyingPhone] = useState(false);
+  const [phoneVerificationId, setPhoneVerificationId] = useState<string | null>(null);
 
   // Email Change Verification State
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState('');
-  const [emailOtpStep, setEmailOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
-  const [emailOtpCode, setEmailOtpCode] = useState('');
   const [verifyingEmail, setVerifyingEmail] = useState(false);
 
   useEffect(() => {
@@ -199,37 +209,83 @@ export default function ProfilePage() {
     }
   };
 
-  // Verified Phone Change Handler
-  const handleSendPhoneOtp = (e: React.FormEvent) => {
+  // Verified Phone Change: SMS OTP links the new number to the Firebase account,
+  // then the server reads the number from a fresh ID token
+  const handleSendPhoneOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPhoneInput.trim() || newPhoneInput.length < 10) {
+    const e164 = toE164IndianMobile(newPhoneInput);
+    if (!e164) {
       setStatusMessage({ type: 'error', text: 'Please enter a valid 10-digit mobile number' });
       return;
     }
-    setPhoneOtpStep('OTP');
-    setStatusMessage({ type: 'success', text: `Verification code sent to ${newPhoneInput}` });
-  };
 
-  const handleConfirmPhoneChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneOtpCode.trim() || phoneOtpCode.length < 4) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid OTP code' });
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) {
+      if (DEV_OTP_BYPASS_ENABLED) {
+        // Development without Firebase: use the test code
+        setPhoneVerificationId(null);
+        setPhoneOtpStep('OTP');
+        return;
+      }
+      setStatusMessage({
+        type: 'error',
+        text: 'For security, please sign out and sign in again before changing your number.',
+      });
       return;
     }
 
     try {
       setVerifyingPhone(true);
-      const formattedPhone = newPhoneInput.startsWith('+91') ? newPhoneInput : `+91 ${newPhoneInput.replace(/^\+91/, '').trim()}`;
-      const res = await fetch('/api/v1/auth/me', {
-        method: 'PUT',
+      const provider = new PhoneAuthProvider(firebaseAuth);
+      const verificationId = await provider.verifyPhoneNumber(
+        e164,
+        getRecaptchaVerifier(PROFILE_RECAPTCHA_ID)
+      );
+      setPhoneVerificationId(verificationId);
+      setPhoneOtpStep('OTP');
+      setStatusMessage({ type: 'success', text: `Verification code sent to ${e164}` });
+    } catch (err) {
+      resetRecaptchaVerifier(PROFILE_RECAPTCHA_ID);
+      console.warn('Phone verification SMS failed', err);
+      setStatusMessage({ type: 'error', text: 'Unable to send the SMS code. Please try again.' });
+    } finally {
+      setVerifyingPhone(false);
+    }
+  };
+
+  const handleConfirmPhoneChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(phoneOtpCode.trim())) {
+      setStatusMessage({ type: 'error', text: 'Please enter the 6-digit OTP code' });
+      return;
+    }
+
+    try {
+      setVerifyingPhone(true);
+      let body: { idToken: string; devPhoneNumber?: string };
+
+      const currentUser = firebaseAuth.currentUser;
+      if (phoneVerificationId && currentUser) {
+        const credential = PhoneAuthProvider.credential(phoneVerificationId, phoneOtpCode.trim());
+        await updatePhoneNumber(currentUser, credential);
+        body = { idToken: await currentUser.getIdToken(true) };
+      } else if (DEV_OTP_BYPASS_ENABLED && phoneOtpCode.trim() === DEV_TEST_OTP && user) {
+        body = {
+          idToken: `dev-token-${user.id}`,
+          devPhoneNumber: toE164IndianMobile(newPhoneInput) ?? undefined,
+        };
+      } else {
+        throw new Error('Please request a new verification code.');
+      }
+
+      const res = await fetch('/api/v1/auth/phone', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-dev-user-id': activePersona,
           'x-society-id': 'soc-ggh-001',
         },
-        body: JSON.stringify({
-          mobile: formattedPhone,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
@@ -237,34 +293,32 @@ export default function ProfilePage() {
         setPhoneOtpStep('INPUT');
         setPhoneOtpCode('');
         setNewPhoneInput('');
+        setPhoneVerificationId(null);
         await refreshAuth();
         setStatusMessage({ type: 'success', text: 'Mobile number verified and updated successfully!' });
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to update phone number');
       }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error verifying phone number' });
+    } catch (err: unknown) {
+      const message =
+        typeof err === 'object' && err && 'code' in err && err.code === 'auth/invalid-verification-code'
+          ? 'Incorrect OTP code. Please check and retry.'
+          : err instanceof Error
+            ? err.message
+            : 'Error verifying phone number';
+      setStatusMessage({ type: 'error', text: message });
     } finally {
       setVerifyingPhone(false);
     }
   };
 
-  // Verified Email Change Handler
-  const handleSendEmailOtp = (e: React.FormEvent) => {
+  // Email change: email is contact info only and is stored as unverified
+  const handleSaveEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmailInput.trim() || !newEmailInput.includes('@')) {
+    const newEmail = newEmailInput.trim().toLowerCase();
+    if (!newEmail || !newEmail.includes('@')) {
       setStatusMessage({ type: 'error', text: 'Please enter a valid email address' });
-      return;
-    }
-    setEmailOtpStep('OTP');
-    setStatusMessage({ type: 'success', text: `Verification code sent to ${newEmailInput}` });
-  };
-
-  const handleConfirmEmailChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOtpCode.trim() || emailOtpCode.length < 4) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid verification code' });
       return;
     }
 
@@ -277,25 +331,24 @@ export default function ProfilePage() {
           'x-dev-user-id': activePersona,
           'x-society-id': 'soc-ggh-001',
         },
-        body: JSON.stringify({
-          email: newEmailInput.trim().toLowerCase(),
-        }),
+        body: JSON.stringify({ email: newEmail }),
       });
 
       if (res.ok) {
-        setEmail(newEmailInput.trim().toLowerCase());
+        setEmail(newEmail);
         setShowEmailModal(false);
-        setEmailOtpStep('INPUT');
-        setEmailOtpCode('');
         setNewEmailInput('');
         await refreshAuth();
-        setStatusMessage({ type: 'success', text: 'Email address verified and updated successfully!' });
+        setStatusMessage({ type: 'success', text: 'Email address updated.' });
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to update email');
       }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error verifying email address' });
+    } catch (err: unknown) {
+      setStatusMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Error updating email address',
+      });
     } finally {
       setVerifyingEmail(false);
     }
@@ -439,7 +492,6 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => {
                   setNewEmailInput('');
-                  setEmailOtpStep('INPUT');
                   setShowEmailModal(true);
                 }}
                 className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition-colors"
@@ -742,6 +794,7 @@ export default function ProfilePage() {
       {showPhoneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
           <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
+            <div id={PROFILE_RECAPTCHA_ID}></div>
             <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Mobile Number</h3>
             <p className="text-xs text-slate-500 mb-4">
               All resident mobile numbers require instant SMS OTP verification for community security.
@@ -770,9 +823,10 @@ export default function ProfilePage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                    disabled={verifyingPhone}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
                   >
-                    Send OTP
+                    {verifyingPhone ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send OTP'}
                   </button>
                 </div>
               </form>
@@ -785,13 +839,17 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     value={phoneOtpCode}
                     onChange={(e) => setPhoneOtpCode(e.target.value)}
-                    placeholder="Enter 6-digit OTP (e.g. 123456)"
+                    placeholder="Enter 6-digit OTP"
                     className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Dev test code: 123456</p>
+                  {DEV_OTP_BYPASS_ENABLED && (
+                    <p className="text-[10px] text-slate-400 mt-1">Dev test code: {DEV_TEST_OTP}</p>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -821,73 +879,38 @@ export default function ProfilePage() {
           <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
             <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Email Address</h3>
             <p className="text-xs text-slate-500 mb-4">
-              All resident emails require confirmation code verification to prevent unauthorized updates.
+              Used for account notices only. It is never shown to other residents.
             </p>
 
-            {emailOtpStep === 'INPUT' ? (
-              <form onSubmit={handleSendEmailOtp} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">New Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={newEmailInput}
-                    onChange={(e) => setNewEmailInput(e.target.value)}
-                    placeholder="resident@workplace.com"
-                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                  >
-                    Send Code
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleConfirmEmailChange} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Enter Verification Code sent to {newEmailInput}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={emailOtpCode}
-                    onChange={(e) => setEmailOtpCode(e.target.value)}
-                    placeholder="Enter 6-digit code (e.g. 123456)"
-                    className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Verification code: 123456</p>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setEmailOtpStep('INPUT')}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={verifyingEmail}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
-                  >
-                    {verifyingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Save'}
-                  </button>
-                </div>
-              </form>
-            )}
+            <form onSubmit={handleSaveEmail} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">New Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={newEmailInput}
+                  onChange={(e) => setNewEmailInput(e.target.value)}
+                  placeholder="resident@workplace.com"
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={verifyingEmail}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
+                >
+                  {verifyingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

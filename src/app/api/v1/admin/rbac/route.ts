@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { MembershipRole } from '@/types';
 
 // App Admin endpoint to view and update RBAC roles and granular permissions
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  
   // App Admin (SUPER_ADMIN) is required to manage RBAC
-  if (auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Platform App Admin role required for RBAC control', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { targetUserId, targetSocietyId, role, permissions } = body;

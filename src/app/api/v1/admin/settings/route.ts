@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 
 // Update society profile and settings (name, address, location, rules, detour threshold)
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const {

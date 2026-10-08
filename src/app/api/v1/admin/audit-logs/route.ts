@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 
 // List activity logs for the society (Society Admin & App Admin only)
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const events = await repo.listAuditEvents(auth.societyId);

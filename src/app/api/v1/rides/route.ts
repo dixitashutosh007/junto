@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { formatPublicJourneyView } from '@/lib/services/privacy';
 import { RideOccurrence } from '@/types';
 import { CreateRideSchema } from '@/lib/validation/schemas';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('date') || undefined;
@@ -58,9 +57,8 @@ export async function GET(req: NextRequest) {
 
 // Offer a ride / create a ride occurrence
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json().catch(() => ({}));
   const parseResult = CreateRideSchema.safeParse(body);
@@ -142,8 +140,8 @@ export async function POST(req: NextRequest) {
 
 // Edit a ride occurrence (Offerer only)
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { journeyId, destinationName, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } = body;
@@ -174,8 +172,8 @@ export async function PUT(req: NextRequest) {
 
 // Delete or Cancel a ride occurrence (Offerer only)
 export async function DELETE(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const journeyId = searchParams.get('journeyId');

@@ -608,6 +608,13 @@ export class MockDynamoRepository implements ISocietyRepository {
     return null;
   }
 
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | null> {
+    for (const u of this.users.values()) {
+      if (u.firebaseUid === firebaseUid) return u;
+    }
+    return null;
+  }
+
   async createUser(user: User): Promise<User> {
     this.users.set(user.id, user);
     return user;

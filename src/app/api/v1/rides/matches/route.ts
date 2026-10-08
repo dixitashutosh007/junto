@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { evaluateCommuteMatch } from '@/lib/services/matching';
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { pickupName, pickupLat, pickupLng, dropoffName, dropoffLat, dropoffLng, preferredTime, date } = body;

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { RideRequest } from '@/types';
 import { CreateRideRequestSchema } from '@/lib/validation/schemas';
 
 // Request a seat on a journey
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json().catch(() => ({}));
   const parseResult = CreateRideRequestSchema.safeParse(body);
@@ -91,8 +90,8 @@ export async function POST(req: NextRequest) {
 
 // Accept or Reject a seat request (Offerer only)
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { requestId, action, note } = body; // action: 'ACCEPT' | 'REJECT'
@@ -178,8 +177,8 @@ export async function PUT(req: NextRequest) {
 
 // Get user requests (Seeker view) or journey requests (Offerer view)
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const journeyId = searchParams.get('journeyId');
@@ -220,8 +219,8 @@ export async function GET(req: NextRequest) {
 
 // Cancel a request (Seeker only)
 export async function DELETE(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const requestId = searchParams.get('requestId');

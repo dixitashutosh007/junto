@@ -87,9 +87,23 @@ export function TopBarNav() {
     },
   ];
 
+  // Demo persona switching exists only in development; production shows the real role
+  const showDemoPersonas = process.env.NODE_ENV !== 'production';
+  const isAdmin = membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN';
+
+  const realPersonaIndex =
+    membership?.role === 'SUPER_ADMIN'
+      ? 3
+      : membership?.role === 'SOCIETY_ADMIN'
+        ? 2
+        : user?.commuteIntent === 'SEEKER'
+          ? 1
+          : 0;
+
   // Active persona descriptor
-  const currentPersona =
-    availablePersonas.find((p) => p.id === activePersona) || availablePersonas[0];
+  const currentPersona = showDemoPersonas
+    ? availablePersonas.find((p) => p.id === activePersona) || availablePersonas[0]
+    : availablePersonas[realPersonaIndex];
   const CurrentIcon = currentPersona.icon;
 
   // Junto Product Suite
@@ -232,67 +246,73 @@ export function TopBarNav() {
             {/* Persona Dropdown Menu */}
             {personaMenuOpen && (
               <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Switch Active Role
-                </div>
-                <div className="space-y-1">
-                  {availablePersonas.map((p) => {
-                    const isSelected = p.id === activePersona;
-                    const Icon = p.icon;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          switchPersona(p.id);
-                          setPersonaMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors ${
-                          isSelected
-                            ? 'bg-zinc-900 text-white font-semibold'
-                            : 'hover:bg-zinc-50 text-zinc-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`p-1.5 rounded-lg ${
-                              isSelected ? 'bg-zinc-800 text-white' : p.color
+                {showDemoPersonas && (
+                  <>
+                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Switch Active Role (dev only)
+                    </div>
+                    <div className="space-y-1">
+                      {availablePersonas.map((p) => {
+                        const isSelected = p.id === activePersona;
+                        const Icon = p.icon;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              switchPersona(p.id);
+                              setPersonaMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors ${
+                              isSelected
+                                ? 'bg-zinc-900 text-white font-semibold'
+                                : 'hover:bg-zinc-50 text-zinc-700'
                             }`}
                           >
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <p className="font-bold">{p.label}</p>
-                            <p
-                              className={`text-[10px] ${
-                                isSelected ? 'text-zinc-300' : 'text-zinc-400'
-                              }`}
-                            >
-                              {p.description}
-                            </p>
-                          </div>
-                        </div>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`p-1.5 rounded-lg ${
+                                  isSelected ? 'bg-zinc-800 text-white' : p.color
+                                }`}
+                              >
+                                <Icon className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <p className="font-bold">{p.label}</p>
+                                <p
+                                  className={`text-[10px] ${
+                                    isSelected ? 'text-zinc-300' : 'text-zinc-400'
+                                  }`}
+                                >
+                                  {p.description}
+                                </p>
+                              </div>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
 
                 {/* Society Admin Portal Direct Link */}
-                <div className="pt-1.5 mt-1 border-t border-slate-100">
-                  <Link
-                    href="/admin"
-                    onClick={() => setPersonaMenuOpen(false)}
-                    className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs text-amber-900 bg-amber-50 hover:bg-amber-100/80 font-bold transition-colors cursor-pointer"
-                  >
-                    <div className="p-1 rounded-lg bg-amber-200 text-amber-800">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="block leading-none">Admin Management Portal</span>
-                      <span className="text-[10px] text-amber-700 font-normal">Approve members & edit society</span>
-                    </div>
-                  </Link>
-                </div>
+                {(showDemoPersonas || isAdmin) && (
+                  <div className="pt-1.5 mt-1 border-t border-slate-100">
+                    <Link
+                      href="/admin"
+                      onClick={() => setPersonaMenuOpen(false)}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs text-amber-900 bg-amber-50 hover:bg-amber-100/80 font-bold transition-colors cursor-pointer"
+                    >
+                      <div className="p-1 rounded-lg bg-amber-200 text-amber-800">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="block leading-none">Admin Management Portal</span>
+                        <span className="text-[10px] text-amber-700 font-normal">Approve members & edit society</span>
+                      </div>
+                    </Link>
+                  </div>
+                )}
 
                 {/* Logout Action */}
                 <div className="pt-2 mt-1.5 border-t border-slate-100">

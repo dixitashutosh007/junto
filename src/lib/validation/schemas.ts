@@ -34,15 +34,41 @@ export const CreateRideRequestSchema = z.object({
   dropoffLng: z.number().optional(),
 });
 
-// Member registration schema
+const GenderSchema = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']);
+
+// Session creation (phone OTP sign-in)
+export const CreateSessionSchema = z.object({
+  idToken: z.string().min(1).max(4096),
+  societyCode: z.string().min(2).max(32).optional(),
+});
+
+// Member registration schema (signed-in user joining a society by invite code).
+// The mobile number always comes from the verified sign-in, never the form.
 export const MemberRegistrationSchema = z.object({
-  societyCode: z.string().min(2, 'Society invitation code required'),
-  fullName: z.string().min(2, 'Full name required'),
-  email: z.string().email('Valid email address required'),
-  mobile: z.string().min(10, 'Valid mobile number required'),
-  flatNumber: z.string().min(1, 'Flat / Apartment number required'),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).default('PREFER_NOT_TO_SAY'),
-  workLocationName: z.string().optional(),
+  societyCode: z.string().min(2, 'Society invitation code required').max(32),
+  fullName: z.string().trim().min(2, 'Full name required').max(100),
+  email: z.string().trim().toLowerCase().email('Valid email address required').max(254),
+  flatNumber: z.string().trim().min(1, 'Flat / Apartment number required').max(32),
+  gender: GenderSchema.default('PREFER_NOT_TO_SAY'),
+  workLocationName: z.string().trim().max(200).optional(),
+});
+
+// Profile update. Mobile changes go through the verified /auth/phone route.
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  email: z.string().trim().toLowerCase().email('Valid email address required').max(254).optional(),
+  flatNumber: z.string().trim().min(1).max(32).optional(),
+  commuteIntent: z.enum(['OFFERER', 'SEEKER', 'BOTH']).optional(),
+  workLocationName: z.string().trim().max(200).optional(),
+  gender: GenderSchema.optional(),
+  profileCompleted: z.boolean().optional(),
+});
+
+// Verified mobile number change: an ID token issued after updatePhoneNumber()
+export const VerifyPhoneChangeSchema = z.object({
+  idToken: z.string().min(1).max(4096),
+  // Development only: the new number when using a dev token
+  devPhoneNumber: z.string().regex(/^\+91[6-9]\d{9}$/).optional(),
 });
 
 // Feedback schema

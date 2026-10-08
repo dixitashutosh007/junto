@@ -33,6 +33,7 @@ export interface ISocietyRepository {
   getUserById(userId: string): Promise<User | null>;
   getUserByEmail(email: string): Promise<User | null>;
   getUserByPhone(mobile: string): Promise<User | null>;
+  getUserByFirebaseUid(firebaseUid: string): Promise<User | null>;
   createUser(user: User): Promise<User>;
   updateUser(userId: string, updates: Partial<User>): Promise<User>;
 

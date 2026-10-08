@@ -1,45 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { errorResponse } from '@/lib/api-auth';
-import { User, SocietyMembership } from '@/types';
+import { errorResponse, getSessionUser } from '@/lib/api-auth';
 import { MemberRegistrationSchema } from '@/lib/validation/schemas';
 
+/**
+ * Completes registration for a signed-in user joining a society by invite code.
+ *
+ * The user must already have verified their mobile number via phone OTP
+ * (POST /api/v1/auth/session); identity comes from that session, never from
+ * the submitted form.
+ */
 export async function POST(req: NextRequest) {
+  const session = await getSessionUser(req);
+  if (!session) return errorResponse('Please verify your mobile number first', 401);
+
+  const parseResult = MemberRegistrationSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parseResult.success) {
+    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid registration details');
+  }
+  const { societyCode, fullName, email, flatNumber, gender, workLocationName } = parseResult.data;
+
   try {
-    const body = await req.json().catch(() => ({}));
-    const parseResult = MemberRegistrationSchema.safeParse(body);
-    if (!parseResult.success) {
-      return errorResponse(parseResult.error.issues[0]?.message || 'Invalid registration details');
-    }
-
-    const { societyCode, fullName, email, mobile, flatNumber, gender, workLocationName } = parseResult.data;
-
     const repo = getRepository();
 
-    // Verify society code exists
     const society = await repo.getSocietyByCode(societyCode);
     if (!society || society.status !== 'ACTIVE') {
       return errorResponse('Invalid or inactive society invitation code', 404);
     }
 
-    // Check if user email already exists
-    let user = await repo.getUserByEmail(email);
-    if (!user) {
-      user = await repo.createUser({
-        id: `usr-${Date.now()}`,
-        cognitoSub: `cognito-${Date.now()}`,
-        email,
-        mobile,
-        fullName,
-        gender: gender || 'PREFER_NOT_TO_SAY',
-        workLocationName,
-        createdAt: new Date().toISOString(),
-      });
-    }
+    const user = await repo.updateUser(session.user.id, {
+      fullName,
+      gender,
+      workLocationName,
+      ...(email !== session.user.email ? { email, emailVerified: false } : {}),
+    });
 
-    // Check if membership already exists
+    const now = new Date().toISOString();
     let membership = await repo.getMembership(society.id, user.id);
-    if (membership) {
+
+    if (membership && membership.status !== 'PENDING_APPROVAL' && membership.status !== 'REGISTERED') {
       return NextResponse.json({
         message: 'Membership already registered',
         user,
@@ -48,28 +47,37 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create pending membership
-    membership = await repo.createMembership({
-      id: `mem-${Date.now()}`,
-      societyId: society.id,
-      userId: user.id,
-      flatNumber,
-      role: 'RESIDENT',
-      status: society.settings.require_admin_approval ? 'PENDING_APPROVAL' : 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    const status = society.settings.require_admin_approval ? 'PENDING_APPROVAL' : 'ACTIVE';
 
-    // Record audit event
+    if (membership) {
+      // Sign-in created a pending membership; fill in the flat details
+      membership = await repo.updateMembership(society.id, user.id, {
+        flatNumber,
+        status,
+        updatedAt: now,
+      });
+    } else {
+      membership = await repo.createMembership({
+        id: `mem-${crypto.randomUUID()}`,
+        societyId: society.id,
+        userId: user.id,
+        flatNumber,
+        role: 'RESIDENT',
+        status,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
     await repo.recordAuditEvent({
-      id: `audit-${Date.now()}`,
+      id: `audit-${crypto.randomUUID()}`,
       societyId: society.id,
       actorUserId: user.id,
       action: 'RESIDENT_REGISTERED',
       entityType: 'MEMBERSHIP',
       entityId: membership.id,
       metadata: { flatNumber, status: membership.status },
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     });
 
     return NextResponse.json({
@@ -78,8 +86,8 @@ export async function POST(req: NextRequest) {
       society,
       membership,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Registration failed';
-    return errorResponse(message, 500);
+  } catch (err) {
+    console.error('Registration failed:', err);
+    return errorResponse('Registration failed. Please try again.', 500);
   }
 }

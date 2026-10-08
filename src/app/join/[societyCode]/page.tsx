@@ -1,16 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, use, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Building, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { useAuth } from '@/context/AuthContext';
+import { User } from '@/types';
 
-export default function JoinSocietyPage({ params }: { params: Promise<{ societyCode: string }> }) {
+type JoinParams = Promise<{ societyCode: string }>;
+
+// The invite code is only known at request time, so the form renders inside Suspense
+export default function JoinSocietyPage({ params }: { params: JoinParams }) {
+  return (
+    <Suspense fallback={null}>
+      <JoinSocietyForm params={params} />
+    </Suspense>
+  );
+}
+
+function JoinSocietyForm({ params }: { params: JoinParams }) {
   const router = useRouter();
+  const { societyCode } = use(params);
+  const { user, isAuthenticated } = useAuth();
+
+  // Registration requires a verified mobile number (phone OTP sign-in) first
+  const [verifiedUser, setVerifiedUser] = useState<User | null>(null);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const signedInUser = verifiedUser ?? (isAuthenticated ? user : null);
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [workLocation, setWorkLocation] = useState('');
   const [gender, setGender] = useState('MALE');
@@ -43,10 +64,9 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          societyCode: 'GGH2024',
+          societyCode,
           fullName,
           email,
-          mobile,
           flatNumber,
           gender,
           workLocationName: workLocation,
@@ -98,6 +118,30 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
             Return to Home
           </Link>
         </div>
+      ) : !signedInUser ? (
+        <div className="my-auto text-center py-12 px-6">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+            <ShieldCheck className="w-10 h-10" />
+          </div>
+          <h2 className="text-lg font-bold text-zinc-900 mb-1">Verify your mobile number</h2>
+          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+            We&apos;ll send a one-time code by SMS. Your verified number is what co-residents see once you share a ride.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowOtpModal(true)}
+            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
+          >
+            Continue with mobile OTP
+          </button>
+          <PhoneOtpModal
+            isOpen={showOtpModal}
+            onClose={() => setShowOtpModal(false)}
+            onSuccess={(verified) => setVerifiedUser(verified)}
+            societyCode={societyCode}
+            skipReload
+          />
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-3.5">
           {error && (
@@ -146,14 +190,10 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
 
           <div>
             <label className="text-xs font-semibold text-zinc-700 block mb-1">Mobile Number</label>
-            <input
-              type="tel"
-              required
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              placeholder="+91 98765 43210"
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
-            />
+            <div className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>{signedInUser?.mobile || 'Verified'}</span>
+            </div>
           </div>
 
           <div>

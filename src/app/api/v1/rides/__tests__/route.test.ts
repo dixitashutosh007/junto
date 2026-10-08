@@ -75,7 +75,5 @@ describe('/api/v1/rides route', () => {
       expect(res.status).toBe(401);
     });
 
-    // Phase 1.1: session cookies must be signed; today a raw user ID is accepted.
-    it.todo('rejects a forged session cookie containing a raw user ID');
   });
 });

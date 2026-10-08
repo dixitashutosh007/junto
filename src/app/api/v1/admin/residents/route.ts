@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 
 // List registrations for the current society (pending or all)
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
   const viewAll = searchParams.get('all') === 'true';
@@ -25,11 +22,8 @@ export async function GET(req: NextRequest) {
 
 // Approve, reject, block, suspend or reactivate resident registration
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { targetUserId, action, reason } = body; // action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'BLOCK' | 'REACTIVATE'

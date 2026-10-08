@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { ModerationReport } from '@/types';
 import { ModerationReportSchema } from '@/lib/validation/schemas';
 
 // Submit a resident or ride violation report
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json().catch(() => ({}));
   const parseResult = ModerationReportSchema.safeParse(body);
@@ -48,11 +48,8 @@ export async function POST(req: NextRequest) {
 
 // List society moderation reports (Society Admin only)
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const reports = await repo.listModerationReports(auth.societyId);
@@ -61,11 +58,8 @@ export async function GET(req: NextRequest) {
 
 // Update moderation report status (Society Admin only)
 export async function PATCH(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { reportId, status, resolutionNotes } = body;

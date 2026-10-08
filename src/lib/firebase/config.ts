@@ -2,6 +2,7 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 /**
  * Firebase Web SDK Configuration
@@ -20,3 +21,18 @@ const firebaseConfig = {
 // Initialize Firebase singleton
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const firebaseAuth = getAuth(firebaseApp);
+
+// Firebase App Check: proves requests (including SMS OTP sends) come from this
+// app, which blocks scripted SMS abuse. Enabled when a reCAPTCHA Enterprise
+// site key is configured; enforce it in the Firebase console afterwards.
+const appCheckSiteKey = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY;
+if (typeof window !== 'undefined' && appCheckSiteKey) {
+  try {
+    initializeAppCheck(firebaseApp, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch {
+    // Already initialized (e.g. after a hot reload)
+  }
+}

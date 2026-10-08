@@ -124,6 +124,16 @@ export class FirestoreRepository implements ISocietyRepository {
     return snap.docs[0].data() as User;
   }
 
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | null> {
+    const snap = await this.db
+      .collection('users')
+      .where('firebaseUid', '==', firebaseUid)
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    return snap.docs[0].data() as User;
+  }
+
   async createUser(user: User): Promise<User> {
     await this.db.collection('users').doc(user.id).set(user);
     return user;

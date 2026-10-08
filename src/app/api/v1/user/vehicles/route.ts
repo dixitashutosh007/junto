@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { ONBOARDING_STATUSES, requireAuth, errorResponse } from '@/lib/api-auth';
 import { Vehicle } from '@/types';
 import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
 
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
+  if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const vehicles = await repo.listUserVehicles(auth.societyId, auth.userId);
@@ -14,13 +14,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-
-  // Allow ACTIVE residents and PENDING_APPROVAL onboarding residents
-  if (auth.status !== 'ACTIVE' && auth.status !== 'PENDING_APPROVAL' && auth.status !== 'REGISTERED') {
-    return errorResponse('Valid society membership required', 403);
-  }
+  // Allow ACTIVE residents and onboarding residents awaiting approval
+  const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
+  if (auth instanceof NextResponse) return auth;
 
   const body = await req.json();
   const { type, make, model, color, registrationNumber, capacity, mileageKmPerLitre } = body;

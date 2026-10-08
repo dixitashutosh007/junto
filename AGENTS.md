@@ -23,13 +23,13 @@ Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODU
 
 **Layout:**
 - API routes: `src/app/api/v1/**/route.ts`
-- Auth context for routes: `src/lib/api-auth.ts`
+- Auth for routes: `src/lib/api-auth.ts` (`requireAuth`); sessions: `src/lib/auth/session.ts`
 - Data access only through `getRepository()` (`src/lib/db`); `FirestoreRepository` in production, `MockDynamoRepository` (seeded demo data) in development and tests
 - Shared types: `src/types`; request schemas: `src/lib/validation/schemas.ts`
-- Route tests: `src/app/api/**/__tests__/*.test.ts`, using `makeRequest` and `resetRepository` from `src/test/route-helpers.ts`
+- Route tests: `src/app/api/**/__tests__/*.test.ts`, using `makeRequest` and `resetRepository` from `src/test/route-helpers.ts`; mock Firebase with `src/test/firebase-admin-mock.ts` to test production auth
 
 **Every API route must:**
-- Call `getAuthContext(req)`; return 401 if it is null, and 403 unless the membership is `ACTIVE` (onboarding routes excepted).
+- Start with `const auth = await requireAuth(req, { statuses?, roles? }); if (auth instanceof NextResponse) return auth;`. It returns 401 when signed out and 403 unless the membership is `ACTIVE` (pass `ONBOARDING_STATUSES` only for onboarding routes).
 - Validate the body and query with a Zod schema; never destructure raw `req.json()`.
 - Check ownership or role on the target entity (the offerer, the seeker, or an admin of *that* society).
 - Return generic error messages; never echo `err.message` to the client.

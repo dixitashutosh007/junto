@@ -1,58 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
 import { getRepository } from '@/lib/db';
-import { User, SocietyMembership } from '@/types';
+import { errorResponse } from '@/lib/api-auth';
+import {
+  LEGACY_COOKIES,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+  SOCIETY_COOKIE,
+  createSessionCookieValue,
+  isDevAuthEnabled,
+  revokeSessions,
+  verifyFreshIdToken,
+} from '@/lib/auth/session';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
+import { CreateSessionSchema } from '@/lib/validation/schemas';
+import { User } from '@/types';
+
+// Default society until multi-society support lands (roadmap task 4.1)
+const DEFAULT_SOCIETY_ID = 'soc-ggh-001';
 
 /**
- * Exchange Firebase ID token from client for a secure HTTP-Only session cookie
- * or verify active resident profile based on Firebase Auth UID / Phone Number.
+ * Exchanges a Firebase ID token from a fresh phone OTP sign-in for a
+ * Firebase session cookie, creating the user and a pending membership on
+ * first sign-in.
  */
 export async function POST(req: NextRequest) {
+  const limit = rateLimit(`session:${clientIp(req)}`, 10, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many sign-in attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+    );
+  }
+
+  const parsed = CreateSessionSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return errorResponse('Missing idToken');
+  const { idToken, societyCode } = parsed.data;
+
+  const identity = await verifyFreshIdToken(idToken);
+  if (!identity) return errorResponse('Invalid or expired sign-in. Please verify your mobile again.', 401);
+  if (!identity.phoneNumber && !isDevAuthEnabled()) {
+    return errorResponse('Mobile number sign-in required', 401);
+  }
+
   try {
-    const body = await req.json();
-    const { idToken, societyId } = body;
-
-    if (!idToken) {
-      return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
-    }
-
-    const targetSocietyId = societyId || 'soc-ggh-001';
     const repo = getRepository();
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    let uid: string;
-    let phoneNumber: string = '+919811122233';
+    const society = societyCode
+      ? await repo.getSocietyByCode(societyCode)
+      : await repo.getSocietyById(DEFAULT_SOCIETY_ID);
+    if (!society || society.status !== 'ACTIVE') {
+      return errorResponse('Invalid or inactive society invitation code', 404);
+    }
 
-    try {
-      const decodedToken = await adminAuth.verifyIdToken(idToken);
-      uid = decodedToken.uid;
-      phoneNumber = decodedToken.phone_number || phoneNumber;
-    } catch (tokenErr) {
-      // In production, token MUST be authentic and signed by Firebase Admin
-      if (isProduction) {
-        console.error('Firebase token verification failed in production:', tokenErr);
-        return NextResponse.json({ error: 'Invalid or expired Firebase authentication token' }, { status: 401 });
-      }
-      // In local dev/test mode only:
-      if (idToken.startsWith('dev-token-')) {
-        uid = idToken.replace('dev-token-', '');
-      } else {
-        uid = 'usr-offerer-001';
+    // Resolve the user: by Firebase UID first, then by verified phone number
+    let user: User | null =
+      (await repo.getUserById(identity.uid)) ?? (await repo.getUserByFirebaseUid(identity.uid));
+
+    if (!user && identity.phoneNumber) {
+      const byPhone = await repo.getUserByPhone(identity.phoneNumber);
+      if (byPhone) {
+        if (byPhone.firebaseUid && byPhone.firebaseUid !== identity.uid) {
+          // The stored number is already linked to another sign-in account
+          return errorResponse(
+            'This mobile number is linked to another account. Please contact your society admin.',
+            409
+          );
+        }
+        user = await repo.updateUser(byPhone.id, { firebaseUid: identity.uid });
       }
     }
 
-    // 2. Fetch existing user by UID or phone number
-    let user = await repo.getUserById(uid);
-    if (!user && phoneNumber) {
-      user = await repo.getUserByPhone(phoneNumber);
-    }
-
-    const isNewUser = !user;
     if (!user) {
       // Initial user stub awaiting resident onboarding
+      const phoneNumber = identity.phoneNumber ?? '';
       user = await repo.createUser({
-        id: uid,
-        cognitoSub: `fb-${uid}`,
+        id: identity.uid,
+        firebaseUid: identity.uid,
+        cognitoSub: `fb-${identity.uid}`,
         email: `${phoneNumber.replace(/\D/g, '')}@societyapps.org`,
         mobile: phoneNumber,
         fullName: 'Resident Member',
@@ -62,57 +86,61 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Ensure society membership
-    let membership = await repo.getMembership(targetSocietyId, user.id);
+    let membership = await repo.getMembership(society.id, user.id);
     if (!membership) {
-      const society = await repo.getSocietyById(targetSocietyId);
+      const now = new Date().toISOString();
       membership = await repo.createMembership({
-        id: `mem-${Date.now()}`,
-        societyId: targetSocietyId,
+        id: `mem-${crypto.randomUUID()}`,
+        societyId: society.id,
         userId: user.id,
         flatNumber: 'Pending Verification',
         role: 'RESIDENT',
         status: 'PENDING_APPROVAL',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
-    // 4. Return session response and set secure HTTP-only cookie
+    const sessionCookie = await createSessionCookieValue(idToken, identity);
+
     const response = NextResponse.json({
       success: true,
       user,
       membership,
-      societyId: targetSocietyId,
+      societyId: society.id,
     });
 
-    response.cookies.set('societyapps_session', uid, {
+    const secure = process.env.NODE_ENV === 'production';
+    response.cookies.set(SESSION_COOKIE, sessionCookie, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: SESSION_MAX_AGE_SECONDS,
     });
-
-    response.cookies.set('societyapps_society_id', targetSocietyId, {
+    response.cookies.set(SOCIETY_COOKIE, society.id, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: SESSION_MAX_AGE_SECONDS,
     });
+    for (const name of LEGACY_COOKIES) response.cookies.delete(name);
 
     return response;
-  } catch (err: any) {
+  } catch (err) {
     console.error('Session creation error:', err);
-    return NextResponse.json({ error: err.message || 'Authentication error' }, { status: 500 });
+    return errorResponse('Unable to sign in right now. Please try again.', 500);
   }
 }
 
-// Clear session cookie on logout
-export async function DELETE() {
+// Sign out: revoke the Firebase session and clear cookies
+export async function DELETE(req: NextRequest) {
+  await revokeSessions(req.cookies.get(SESSION_COOKIE)?.value);
+
   const response = NextResponse.json({ success: true, message: 'Logged out' });
-  response.cookies.delete('societyapps_session');
-  response.cookies.delete('societyapps_society_id');
+  for (const name of [SESSION_COOKIE, SOCIETY_COOKIE, ...LEGACY_COOKIES]) {
+    response.cookies.delete(name);
+  }
   return response;
 }
