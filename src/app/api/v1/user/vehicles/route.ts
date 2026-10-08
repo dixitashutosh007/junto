@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { getAuthContext, errorResponse } from '@/lib/api-auth';
 import { Vehicle } from '@/types';
+import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthContext(req);
@@ -15,7 +16,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext(req);
   if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Active membership required', 403);
+
+  // Allow ACTIVE residents and PENDING_APPROVAL onboarding residents
+  if (auth.status !== 'ACTIVE' && auth.status !== 'PENDING_APPROVAL' && auth.status !== 'REGISTERED') {
+    return errorResponse('Valid society membership required', 403);
+  }
 
   const body = await req.json();
   const { type, make, model, color, registrationNumber, capacity } = body;
@@ -23,6 +28,14 @@ export async function POST(req: NextRequest) {
   if (!make || !model || !registrationNumber) {
     return errorResponse('Missing vehicle details');
   }
+
+  // Indian standard vehicle number validation
+  const regCheck = validateIndianRegistration(registrationNumber);
+  if (!regCheck.isValid) {
+    return errorResponse(regCheck.error || 'Invalid Indian vehicle registration number', 400);
+  }
+
+  const formattedReg = formatIndianRegistration(registrationNumber);
 
   const repo = getRepository();
   const vehicle: Vehicle = {
@@ -33,7 +46,7 @@ export async function POST(req: NextRequest) {
     make,
     model,
     color: color || 'White',
-    registrationNumber,
+    registrationNumber: formattedReg,
     capacity: capacity ? Number(capacity) : 4,
     isActive: true,
     createdAt: new Date().toISOString(),

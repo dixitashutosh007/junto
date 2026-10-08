@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Vehicle } from '@/types';
+import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
 
 export default function ProfilePage() {
   const { user, membership, society, refreshAuth, activePersona } = useAuth();
@@ -151,6 +153,15 @@ export default function ProfilePage() {
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMake || !newModel || !newReg) return;
+
+    const regCheck = validateIndianRegistration(newReg);
+    if (!regCheck.isValid) {
+      setStatusMessage({
+        type: 'error',
+        text: regCheck.error || 'Please enter a valid Indian vehicle number (e.g. KA-04-MB-1234 or 22-BH-1234-AA)',
+      });
+      return;
+    }
 
     try {
       const res = await fetch('/api/v1/user/vehicles', {
@@ -505,14 +516,13 @@ export default function ProfilePage() {
 
           <div>
             <label className="text-xs font-bold text-slate-800 block mb-1">
-              Destination / Primary Tech Park
+              Destination / Primary Tech Park (Google Places)
             </label>
-            <input
-              type="text"
+            <PlacesAutocompleteInput
               value={workLocation}
-              onChange={(e) => setWorkLocation(e.target.value)}
-              placeholder="e.g. Manyata Tech Park, Hebbal"
-              className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
+              onChange={(loc) => setWorkLocation(loc)}
+              placeholder="Search destination tech park, office campus, or metro..."
+              label=""
             />
           </div>
         </div>
