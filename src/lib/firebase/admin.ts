@@ -9,7 +9,15 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 let app: App;
 
 if (!getApps().length) {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  let serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountJson && process.env.FIREBASE_SERVICE_ACCOUNT_KEY_B64) {
+    try {
+      serviceAccountJson = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_B64, 'base64').toString('utf8');
+    } catch {
+      // ignore
+    }
+  }
+
   if (serviceAccountJson) {
     try {
       const serviceAccount = JSON.parse(serviceAccountJson);
@@ -20,12 +28,12 @@ if (!getApps().length) {
     } catch (e) {
       console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON, using default app', e);
       app = initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'societyapps-dev',
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'saath-societyapps',
       });
     }
   } else {
     app = initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'societyapps-dev',
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'saath-societyapps',
     });
   }
 } else {
