@@ -10,11 +10,13 @@ interface AuthContextType {
   membership: SocietyMembership | null;
   activePersona: string; // 'usr-offerer-001' | 'usr-seeker-001' | 'usr-admin-001' | 'usr-app-admin-001'
   activeSocietyId: string;
+  isAuthenticated: boolean;
   switchPersona: (userId: string) => void;
   switchSociety: (societyId: string) => void;
   updateCommuteIntent: (intent: 'OFFERER' | 'SEEKER' | 'BOTH') => Promise<void>;
   isLoading: boolean;
   refreshAuth: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,11 +26,13 @@ const AuthContext = createContext<AuthContextType>({
   membership: null,
   activePersona: 'usr-offerer-001',
   activeSocietyId: 'soc-ggh-001',
+  isAuthenticated: false,
   switchPersona: () => {},
   switchSociety: () => {},
   updateCommuteIntent: async () => {},
   isLoading: true,
   refreshAuth: async () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -100,6 +104,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchAuth(activePersona, activeSocietyId);
   };
 
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(false);
+
+  // In demo/localhost without active cookie, user can be simulated or logged out
+  const isAuthenticated = !isLoggedOut && Boolean(user);
+
+  const logout = async () => {
+    try {
+      await fetch('/api/v1/auth/session', { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Logout fetch note:', e);
+    }
+    setUser(null);
+    setMembership(null);
+    setIsLoggedOut(true);
+    localStorage.setItem('societyapps_logged_out', 'true');
+  };
+
+  const loginSuccess = () => {
+    setIsLoggedOut(false);
+    localStorage.removeItem('societyapps_logged_out');
+    fetchAuth(activePersona, activeSocietyId);
+  };
+
+  useEffect(() => {
+    const loggedOut = localStorage.getItem('societyapps_logged_out') === 'true';
+    if (loggedOut) {
+      setIsLoggedOut(true);
+      setUser(null);
+      setMembership(null);
+      setIsLoading(false);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -109,11 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         membership,
         activePersona,
         activeSocietyId,
+        isAuthenticated,
         switchPersona,
         switchSociety,
         updateCommuteIntent,
         isLoading,
         refreshAuth,
+        logout,
       }}
     >
       {children}

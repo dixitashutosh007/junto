@@ -16,6 +16,7 @@ import {
   Layers,
   ArrowRight,
   ExternalLink,
+  LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,6 +30,8 @@ export function TopBarNav() {
     switchPersona,
     membership,
     user,
+    isAuthenticated,
+    logout,
   } = useAuth();
 
   const [societyMenuOpen, setSocietyMenuOpen] = useState(false);
@@ -129,6 +132,10 @@ export function TopBarNav() {
       active: false,
     },
   ];
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
@@ -274,6 +281,22 @@ export function TopBarNav() {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Logout Action */}
+                <div className="pt-2 mt-1.5 border-t border-slate-100">
+                  <button
+                    onClick={async () => {
+                      setPersonaMenuOpen(false);
+                      await logout();
+                    }}
+                    className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer"
+                  >
+                    <div className="p-1 rounded-lg bg-rose-100/80 text-rose-600">
+                      <LogOut className="w-3.5 h-3.5" />
+                    </div>
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               </div>
             )}

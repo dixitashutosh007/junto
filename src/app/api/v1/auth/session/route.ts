@@ -102,5 +102,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   const response = NextResponse.json({ success: true, message: 'Logged out' });
   response.cookies.delete('societyapps_session');
+  response.cookies.delete('societyapps_society_id');
   return response;
 }

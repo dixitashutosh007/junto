@@ -8,8 +8,12 @@ import { useAuth } from '@/context/AuthContext';
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { membership } = useAuth();
+  const { membership, isAuthenticated } = useAuth();
   const isAdmin = membership?.role === 'SOCIETY_ADMIN';
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const navItems = [
     { label: 'Home', href: '/', icon: Home },

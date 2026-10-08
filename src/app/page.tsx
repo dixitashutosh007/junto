@@ -24,9 +24,10 @@ import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { SplashScreen } from '@/components/SplashScreen';
 
 export default function HomePage() {
-  const { user, society, membership, activePersona, updateCommuteIntent } = useAuth();
+  const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +102,11 @@ export default function HomePage() {
   };
 
   const firstName = user?.fullName.split(' ')[0] || 'Resident';
+
+  // Requirement 2: First Screen is Splash Screen flashing product and below that Login or Sign Up
+  if (!isLoading && !isAuthenticated) {
+    return <SplashScreen />;
+  }
 
   return (
     <div className="flex-1 flex flex-col pb-8">
