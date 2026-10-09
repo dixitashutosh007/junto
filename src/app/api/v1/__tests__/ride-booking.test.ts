@@ -146,6 +146,12 @@ describe('3.2 seat booking is atomic', () => {
 });
 
 describe('3.3 request rules', () => {
+  it("rejects a request on the resident's own ride, with a message for the UI", async () => {
+    const { res } = await requestSeat(OFFERER);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/your own/i);
+  });
+
   it('rejects a second active request on the same ride', async () => {
     expect((await requestSeat(SEEKER)).res.status).toBe(200);
     expect((await requestSeat(SEEKER)).res.status).toBe(409);
@@ -164,6 +170,18 @@ describe('3.3 request rules', () => {
       journeyDate: ride!.journeyDate,
     });
     expect((await requestSeat(SEEKER)).res.status).toBe(409);
+  });
+
+  it('leaves departed rides out of the ride list, except for their offerer', async () => {
+    const ride = await repo.getRideOccurrence(SOCIETY, 'jrn-001');
+    await repo.updateRideOccurrence(SOCIETY, 'jrn-001', OFFERER, {
+      departureWindowStart: new Date(Date.now() - 60_000).toISOString(),
+      journeyDate: ride!.journeyDate,
+    });
+    const listedFor = async (userId: string) =>
+      ((await (await as(userId, rides.GET, '/api/v1/rides')).json()).rides as { id: string }[]).map((r) => r.id);
+    expect(await listedFor(SEEKER)).not.toContain('jrn-001');
+    expect(await listedFor(OFFERER)).toContain('jrn-001');
   });
 
   it('enforces a women-only ride', async () => {

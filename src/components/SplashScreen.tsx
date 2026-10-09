@@ -11,9 +11,10 @@ import {
   ArrowRight,
   Phone,
   Building2,
-  MapPin,
 } from 'lucide-react';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { ClubHouseLogo } from '@/components/ClubHouseLogo';
+import { APP_NAME, APP_TAGLINE, RIDESHARE_NAME } from '@/lib/brand';
 
 interface SplashScreenProps {
   onSuccessLogin?: () => void;
@@ -33,25 +34,21 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
 
       {/* Top Brand Header */}
       <div className="relative z-10 flex flex-col items-center text-center pt-4">
-        {/* Logo Icon Badge */}
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-xl shadow-emerald-950/60 mb-4 flex items-center justify-center">
           <div className="w-full h-full bg-slate-950/80 rounded-[14px] flex items-center justify-center backdrop-blur-xs">
-            <Car className="w-8 h-8 text-emerald-400 stroke-[2.2]" />
+            <ClubHouseLogo className="w-9 h-9 text-emerald-400" />
           </div>
         </div>
 
-        {/* Product Suite & App Name */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase mb-2">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Junto Community Suite</span>
+          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>Private society apps</span>
         </div>
 
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-          Junto <span className="text-emerald-400">RideShare</span>
-        </h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">{APP_NAME}</h1>
 
         <p className="text-sm text-slate-300 max-w-xs leading-relaxed font-normal">
-          Peer-to-peer co-commute facilitation exclusively for verified residents of{' '}
+          {APP_TAGLINE}, only for verified residents of{' '}
           <span className="text-white font-semibold">{society?.name ?? 'your society'}</span>.
         </p>
       </div>
@@ -60,36 +57,38 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
       <div className="relative z-10 py-6 space-y-3">
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5" />
+            <ShieldCheck className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white">100% Verified Co-Residents</h3>
-            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
-              Only approved residents from your society clubhouse and gates.
+            <h2 className="text-xs font-bold text-white">Verified neighbours only</h2>
+            <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
+              Every member is approved by your society admin.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
           <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
-            <MapPin className="w-5 h-5" />
+            <Car className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white">Smart Detour Matching</h3>
-            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
-              Matched strictly along your commute corridor with ≤ 10 min detours.
+            <h2 className="text-xs font-bold text-white">
+              {RIDESHARE_NAME} <span className="ml-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Live</span>
+            </h2>
+            <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
+              Share rides to work with neighbours. No fares, settle fuel in person.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5" />
+            <Users className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white">Peer Facilitation (Zero Fares)</h3>
-            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
-              Friendly shared rides to Manyata, Bellandur, Electronic City & Whitefield.
+            <h2 className="text-xs font-bold text-white">Coming soon</h2>
+            <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
+              Community, Marketplace, Classes and trusted service reviews.
             </p>
           </div>
         </div>

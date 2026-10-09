@@ -5,9 +5,10 @@ import { useIsClient } from '@/hooks/useIsClient';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
 import { TimeSelect } from '@/components/ui/TimeSelect';
+import { RideRequestAction } from '@/components/RideRequestAction';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Search, MapPin, Clock, ArrowLeft, CheckCircle2, Check } from 'lucide-react';
+import { Search, MapPin, Clock, ArrowLeft, Check } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import {
@@ -19,7 +20,7 @@ import {
 } from '@/components/RouteEndpoints';
 
 export default function FindRidePage() {
-  const { society } = useAuth();
+  const { society, user } = useAuth();
   // From the society by default; swap to find rides back to the society
   const [from, setFrom] = useState<RouteEndpoint>(SOCIETY_ENDPOINT);
   const [to, setTo] = useState<RouteEndpoint>(EMPTY_PLACE);
@@ -30,7 +31,6 @@ export default function FindRidePage() {
   const visibleRides = rides.filter((r) => (r.direction ?? 'OUTBOUND_SOCIETY') === direction);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [requestedRides, setRequestedRides] = useState<Record<string, boolean>>({});
 
   const [selectedDate, setSelectedDate] = useState('ALL');
   // Day chips depend on today's date in India, so they're built in the browser
@@ -62,25 +62,6 @@ export default function FindRidePage() {
     }
   };
 
-  const handleRequestSeat = async (journeyId: string) => {
-    try {
-      const res = await apiFetch('/api/v1/rides/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          journeyId,
-          requestedSeats: 1,
-        }),
-      });
-      if (res.ok) {
-        setRequestedRides((prev) => ({ ...prev, [journeyId]: true }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   return (
     <div className="flex-1 flex flex-col p-5">
@@ -189,9 +170,6 @@ export default function FindRidePage() {
         ) : (
           <div className="space-y-3">
             {visibleRides.map((ride) => {
-              const isRequested = requestedRides[ride.id] || ride.userRequestStatus === 'REQUESTED';
-              const isAccepted = ride.userRequestStatus === 'ACCEPTED';
-
               return (
                 <div
                   key={ride.id}
@@ -247,23 +225,10 @@ export default function FindRidePage() {
                   </div>
 
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-500">Detour: ~6 mins</span>
-                    {isAccepted ? (
-                      <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accepted
-                      </span>
-                    ) : isRequested ? (
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-                        Requested
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleRequestSeat(ride.id)}
-                        className="px-4 py-1.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 active:scale-95 transition-all"
-                      >
-                        Request Seat
-                      </button>
-                    )}
+                    <span className="text-[11px] text-zinc-600">
+                      {ride.availableSeats} of {ride.totalSeats} seats free
+                    </span>
+                    <RideRequestAction ride={ride} currentUserId={user?.id} />
                   </div>
                 </div>
               );

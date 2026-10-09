@@ -8,18 +8,20 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Junto / SocietyApps Platform — AI Agent Guide & Architecture Blueprint
+# Club House Platform — AI Agent Guide & Architecture Blueprint
 
-This document serves as the single source of truth for AI coding agents, autonomous contributors, and sibling applications (Community, Marketplace, Lessons/Classes, Review) interacting with the **Junto (SocietyApps)** ecosystem.
+This document serves as the single source of truth for AI coding agents, autonomous contributors, and sibling applications (Community, Marketplace, Lessons/Classes, Review) interacting with the **Club House** ecosystem.
 
 ---
 
 ## 1. Product Ecosystem & Vision
 
-**Junto** (formerly Saath) is a multi-tenant platform for gated residential apartment societies and communities. It eliminates commercial friction, high commission aggregator charges, and stranger safety risks by providing verified, closed-loop co-resident products.
+**Club House** (formerly Junto, and before that Saath) is the parent app: a multi-tenant platform for gated residential apartment societies and communities. It eliminates commercial friction, high commission aggregator charges, and stranger safety risks by providing verified, closed-loop co-resident products.
+
+Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src/lib/brand.ts`). Internal identifiers such as the `junto_session` cookie, storage keys and the repository name keep the old name so sessions survive.
 
 ### Suite of Community Apps:
-1. **Junto RideShare (Active / V1 Pilot)**: Peer-to-peer co-resident carpooling to tech parks, offices, and metro hubs. Strict zero commercial fares, zero in-app payment rails. Optional fuel sharing calculations (mileage & distance points) handled in-person.
+1. **RideShare (Active / V1 Pilot)**, a sub-app of Club House: Peer-to-peer co-resident carpooling to tech parks, offices, and metro hubs. Strict zero commercial fares, zero in-app payment rails. Optional fuel sharing calculations (mileage & distance points) handled in-person.
 2. **Community (Next Phase)**: Resident directory, interest clubs, building discussions, and neighborhood circles (excluding society circulars).
 3. **Marketplace (Next Phase)**: Secure peer-to-peer household buy, sell, and rent platform for verified neighbors.
 4. **Lessons / Classes (Next Phase)**: In-society classes (yoga, music, tuition, fitness, hobbies) organized and taught by resident teachers.
@@ -95,7 +97,7 @@ This document serves as the single source of truth for AI coding agents, autonom
 
 ## 5. Peer-to-Peer Zero Payment Policy
 
-- **Legal Compliance**: Junto is strictly a non-commercial community facilitation tool.
+- **Legal Compliance**: Club House is strictly a non-commercial community facilitation tool.
 - **No In-App Payments**: The app does **not** process, hold, or escrow money. No payment gateway integration.
 - **Fuel Points Estimation**: Fuel sharing or mileage estimates based on commute distance and car mileage are purely informational. Any shared expenses must be settled directly between neighbors in person.
 
@@ -153,9 +155,9 @@ When creating or extending sibling apps (e.g., **Community**, **Marketplace**, *
 
 ---
 
-## 8. Junto Project Rules (enforced)
+## 8. Project Rules (enforced)
 
-Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODUCTION_ROADMAP.md` for the current hardening plan; some rules below describe the target state that the roadmap phases are moving the code towards.
+Club House is the parent app for a housing society; RideShare, its first sub-app, lets residents share rides. Read `docs/PRODUCTION_ROADMAP.md` for the current hardening plan; some rules below describe the target state that the roadmap phases are moving the code towards.
 
 **Stack:** Next.js 16 App Router, React 19, Firebase Phone Auth + Firestore (admin SDK, server-only), Zod 4, Tailwind 4, Vitest. Deployed on AWS Amplify (`amplify.yml`).
 

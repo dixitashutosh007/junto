@@ -31,7 +31,7 @@ export function getRepository(): ISocietyRepository {
   }
 
   if (useFirestore) {
-    console.info('Junto: initializing Google Cloud Firestore repository');
+    console.info('Club House: initializing Google Cloud Firestore repository');
     global.__societyRepoInstance = new FirestoreRepository();
   } else {
     global.__societyRepoInstance = new MockDynamoRepository();

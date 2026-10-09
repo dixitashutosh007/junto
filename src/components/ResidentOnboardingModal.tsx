@@ -78,7 +78,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
     }
     if (!isLegalFullyAccepted) {
       setShowLegalModal(true);
-      setError('Please review and check all mandatory clauses in the Junto Legal Agreement popup.');
+      setError('Please review and check all mandatory clauses in the Club House Legal Agreement popup.');
       return;
     }
 
@@ -468,7 +468,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Junto Legal Terms & Society Rules</span>
+                  <span>Club House Legal Terms & Society Rules</span>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   isLegalFullyAccepted
@@ -564,7 +564,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                   <div className="text-[11px] leading-snug">
                     <strong className="text-slate-900 block">Clause 1: Non-Commercial Peer Matchmaking Only</strong>
                     <span className="text-slate-600">
-                      I acknowledge that Junto is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
+                      I acknowledge that Club House is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
                     </span>
                   </div>
                 </label>

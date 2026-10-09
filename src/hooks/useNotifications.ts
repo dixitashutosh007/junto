@@ -20,7 +20,7 @@ export function useNotifications() {
         // Send a friendly local test notification
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
-          reg.showNotification('Junto Notifications Enabled', {
+          reg.showNotification('Club House notifications enabled', {
             body: 'You will now receive updates on matches, seat requests, and confirmations.',
             icon: '/icons/icon-192.png',
           });
