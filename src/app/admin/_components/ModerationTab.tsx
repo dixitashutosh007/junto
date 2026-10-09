@@ -24,7 +24,12 @@ export function ModerationTab({ reports, loading, notify, onChanged }: Moderatio
       json: { reportId, status, resolutionNotes: notes || undefined },
     });
     if (res.ok) {
-      notify(`Report marked as ${status.toLowerCase()}.`);
+      const data = await res.json().catch(() => ({}));
+      notify(
+        data.autoSuspended
+          ? `Report upheld. This resident now has 3 upheld reports and has been suspended; reactivate them under Members if needed.`
+          : `Report marked as ${status.toLowerCase()}.`
+      );
       setResolvingId(null);
       setResolutionText('');
       onChanged();

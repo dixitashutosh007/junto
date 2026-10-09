@@ -160,6 +160,11 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 
 **Done when:** pilot runs for 2 weeks with no P0/P1 incidents.
 
+**Progress:**
+- 5.2: production dependencies have no known vulnerabilities (`grpc-js` pinned under the Firebase web SDK). Still to do: a deploy-only key for cloud sessions; Maps key restrictions once a key is used.
+- 5.3: managed backups documented in `docs/OPERATIONS.md` (daily kept 14 days, weekly kept 8 weeks, restore steps); the owner turns them on with two `gcloud` commands. Indexes are committed.
+- 5.5: accepted rides have **Share trip** (phone share sheet, nothing stored) and **Emergency 112**; a resident is suspended automatically on their 3rd upheld report (`src/lib/services/moderation.ts`), with an audit event and a notification; admins are never auto-suspended. Still to do: admin view of repeat cancellers.
+
 ---
 
 ## Summary timeline

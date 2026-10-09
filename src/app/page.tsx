@@ -2,7 +2,7 @@
 
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
-import { formatIstTime, istDateString } from '@/lib/utils/time';
+import { formatIstTime, istDateString, relativeDayLabel } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { RideRequestAction } from '@/components/RideRequestAction';
+import { TripSafetyActions } from '@/components/TripSafetyActions';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
 import { APP_NAME, RIDESHARE_NAME } from '@/lib/brand';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
@@ -536,6 +537,16 @@ export default function HomePage() {
                           <span>Call Driver</span>
                         </a>
                       </div>
+                      <TripSafetyActions
+                        trip={{
+                          driverName: ride.offerer.displayName,
+                          vehicle: [ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' '),
+                          plate: ride.vehicle.registrationNumber,
+                          from: ride.originName,
+                          to: ride.destinationName,
+                          when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
+                        }}
+                      />
                     </div>
                   )}
 
