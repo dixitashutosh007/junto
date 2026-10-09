@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Car, Clock, ShieldCheck, User, Users, ShieldAlert } from 'lucide-react';
+import { Home, Search, Car, Clock, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function BottomNav() {
@@ -18,41 +18,34 @@ export function BottomNav() {
   const isSocietyAdmin = role === 'SOCIETY_ADMIN';
   const isAppAdmin = role === 'SUPER_ADMIN';
 
-  let navItems = [];
+  // Admins are residents too: they get their ride-mode menu plus the Admin Portal
+  let navItems: { label: string; href: string; icon: typeof Home }[];
 
-  if (isSocietyAdmin || isAppAdmin) {
-    // Admin View: focused exclusively on management, approvals, moderation and activity logs
-    navItems = [
-      { label: 'Admin Portal', href: '/admin', icon: ShieldCheck },
-      { label: 'Residents', href: '/admin?tab=MEMBERS', icon: Users },
-      { label: 'Moderation', href: '/admin?tab=MODERATION', icon: ShieldAlert },
-      { label: 'Profile', href: '/profile', icon: User },
-    ];
-  } else if (user?.commuteIntent === 'BOTH') {
-    // Residents who both offer and take rides
+  if (user?.commuteIntent === 'BOTH') {
     navItems = [
       { label: 'Home', href: '/', icon: Home },
       { label: 'Find Ride', href: '/rides/find', icon: Search },
       { label: 'Offer Ride', href: '/rides/offer', icon: Car },
-      { label: 'Profile', href: '/profile', icon: User },
     ];
   } else if (user?.commuteIntent === 'OFFERER') {
-    // Offerer View
     navItems = [
       { label: 'Home', href: '/', icon: Home },
       { label: 'Offer Ride', href: '/rides/offer', icon: Car },
       { label: 'My Rides', href: '/rides/my-rides', icon: Clock },
-      { label: 'Profile', href: '/profile', icon: User },
     ];
   } else {
-    // Seeker / General Resident View
+    // Seekers, and residents who haven't picked a mode yet
     navItems = [
       { label: 'Home', href: '/', icon: Home },
       { label: 'Find Ride', href: '/rides/find', icon: Search },
       { label: 'My Requests', href: '/rides/my-requests', icon: Clock },
-      { label: 'Profile', href: '/profile', icon: User },
     ];
   }
+
+  if (isSocietyAdmin || isAppAdmin) {
+    navItems.push({ label: 'Admin', href: '/admin', icon: ShieldCheck });
+  }
+  navItems.push({ label: 'Profile', href: '/profile', icon: User });
 
   return (
     <nav className="sticky bottom-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 py-2 shadow-lg">
@@ -64,7 +57,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
                 isActive
                   ? 'text-emerald-700 font-bold bg-emerald-50/80'
                   : 'text-slate-500 hover:text-slate-900 font-medium hover:bg-slate-50'

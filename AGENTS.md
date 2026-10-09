@@ -81,7 +81,8 @@ This document serves as the single source of truth for AI coding agents, autonom
 
 ### Dynamic Navigation Menu:
 - The UI navigation adapts dynamically according to active role:
-  - **Admins**: See `Admin Portal`, `Residents`, `Moderation`, `Profile`. Commuter actions (`Find Ride`, `Offer Ride`) are hidden.
+  - **Admins** (society and app admins are residents too): see the menu for their ride mode below, plus `Admin`.
+  - Every user picks a ride mode (Offer / Find / Both) from the top-bar Role menu, the home screen or their profile.
   - **Ride Offerers**: See `Home`, `Offer Ride`, `My Rides`, `Profile`.
   - **Ride Seekers**: See `Home`, `Find Ride`, `My Requests`, `Profile`.
   - **Both**: See `Home`, `Find Ride`, `Offer Ride`, `Profile`.
