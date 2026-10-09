@@ -1,3 +1,11 @@
+import {
+  BookingResult,
+  RideCancellationResult,
+  planAccept,
+  planCancelRide,
+  planClose,
+} from '@/lib/services/seat-booking';
+import { addDays, istDateString, istDateTime } from '@/lib/utils/time';
 import { ISocietyRepository } from './repository.interface';
 import {
   Society,
@@ -112,6 +120,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Vikram Mehta',
       gender: 'MALE',
       workLocationName: 'Electronic City Phase 1',
+      workLatitude: 12.8452,
+      workLongitude: 77.6602,
       createdAt: new Date().toISOString(),
     };
     this.users.set(adminUser.id, adminUser);
@@ -135,9 +145,10 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919811122233',
       fullName: 'Ashutosh Dixit',
       gender: 'MALE',
+      commuteIntent: 'OFFERER',
       workLocationName: 'Manyata Tech Park, Hebbal',
-      workLatitude: 13.0500,
-      workLongitude: 77.6200,
+      workLatitude: 13.05,
+      workLongitude: 77.62,
       createdAt: new Date().toISOString(),
     };
     this.users.set(offererUser.id, offererUser);
@@ -178,9 +189,10 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919822233344',
       fullName: 'Priya Sharma',
       gender: 'FEMALE',
-      workLocationName: 'Bagmane Tech Park, CV Raman Nagar',
-      workLatitude: 12.9800,
-      workLongitude: 77.6600,
+      commuteIntent: 'SEEKER',
+      workLocationName: 'Manyata Tech Park, Hebbal',
+      workLatitude: 13.05,
+      workLongitude: 77.62,
       createdAt: new Date().toISOString(),
     };
     this.users.set(seekerUser.id, seekerUser);
@@ -205,8 +217,9 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919844455566',
       fullName: 'Rohan Gupta',
       gender: 'MALE',
+      commuteIntent: 'OFFERER',
       workLocationName: 'EcoSpace, Bellandur Outer Ring Road',
-      workLatitude: 12.9260,
+      workLatitude: 12.926,
       workLongitude: 77.6762,
       createdAt: new Date().toISOString(),
     };
@@ -247,9 +260,10 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919855566677',
       fullName: 'Ananya Sen',
       gender: 'FEMALE',
+      commuteIntent: 'BOTH',
       workLocationName: 'ITPL, Whitefield',
-      workLatitude: 12.9856,
-      workLongitude: 77.7314,
+      workLatitude: 12.9867,
+      workLongitude: 77.7366,
       createdAt: new Date().toISOString(),
     };
     this.users.set(offererUser3.id, offererUser3);
@@ -290,6 +304,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Rahul Verma',
       gender: 'MALE',
       workLocationName: 'Ecospace, Bellandur',
+      workLatitude: 12.926,
+      workLongitude: 77.6762,
       createdAt: new Date().toISOString(),
     };
     this.users.set(pendingUser.id, pendingUser);
@@ -313,6 +329,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Sneha Patil',
       gender: 'FEMALE',
       workLocationName: 'Prestige Tech Cloud, Hebbal',
+      workLatitude: 13.0358,
+      workLongitude: 77.597,
       createdAt: new Date().toISOString(),
     };
     this.users.set(pendingUser2.id, pendingUser2);
@@ -328,16 +346,9 @@ export class MockDynamoRepository implements ISocietyRepository {
     });
 
     // Seed Journeys for Today, Tomorrow, and Day After Tomorrow
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    const dayAfter = new Date();
-    dayAfter.setDate(dayAfter.getDate() + 2);
-    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+    const todayStr = istDateString();
+    const tomorrowStr = addDays(todayStr, 1);
+    const dayAfterStr = addDays(todayStr, 2);
 
     // Journey 1: Ashutosh -> Manyata Tech Park (Today & Tomorrow)
     const journey1Today: RideOccurrence = {
@@ -347,8 +358,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle1.id,
       journeyDate: todayStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${todayStr}T08:00:00.000Z`,
-      departureWindowEnd: `${todayStr}T08:20:00.000Z`,
+      departureWindowStart: istDateTime(todayStr, '08:00'),
+      departureWindowEnd: istDateTime(todayStr, '08:20'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -375,8 +386,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle1.id,
       journeyDate: tomorrowStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${tomorrowStr}T08:00:00.000Z`,
-      departureWindowEnd: `${tomorrowStr}T08:20:00.000Z`,
+      departureWindowStart: istDateTime(tomorrowStr, '08:00'),
+      departureWindowEnd: istDateTime(tomorrowStr, '08:20'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -404,8 +415,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle2.id,
       journeyDate: todayStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${todayStr}T08:30:00.000Z`,
-      departureWindowEnd: `${todayStr}T08:45:00.000Z`,
+      departureWindowStart: istDateTime(todayStr, '08:30'),
+      departureWindowEnd: istDateTime(todayStr, '08:45'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -432,8 +443,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle2.id,
       journeyDate: tomorrowStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${tomorrowStr}T08:30:00.000Z`,
-      departureWindowEnd: `${tomorrowStr}T08:45:00.000Z`,
+      departureWindowStart: istDateTime(tomorrowStr, '08:30'),
+      departureWindowEnd: istDateTime(tomorrowStr, '08:45'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -461,8 +472,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle3.id,
       journeyDate: tomorrowStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${tomorrowStr}T08:15:00.000Z`,
-      departureWindowEnd: `${tomorrowStr}T08:35:00.000Z`,
+      departureWindowStart: istDateTime(tomorrowStr, '08:15'),
+      departureWindowEnd: istDateTime(tomorrowStr, '08:35'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -489,8 +500,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       vehicleId: vehicle3.id,
       journeyDate: dayAfterStr,
       direction: 'OUTBOUND_SOCIETY',
-      departureWindowStart: `${dayAfterStr}T08:15:00.000Z`,
-      departureWindowEnd: `${dayAfterStr}T08:35:00.000Z`,
+      departureWindowStart: istDateTime(dayAfterStr, '08:15'),
+      departureWindowEnd: istDateTime(dayAfterStr, '08:35'),
       originName: 'Mahaveer Ranches Main Clubhouse Gate',
       originLat: 12.8715,
       originLng: 77.6534,
@@ -608,6 +619,13 @@ export class MockDynamoRepository implements ISocietyRepository {
     return null;
   }
 
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | null> {
+    for (const u of this.users.values()) {
+      if (u.firebaseUid === firebaseUid) return u;
+    }
+    return null;
+  }
+
   async createUser(user: User): Promise<User> {
     this.users.set(user.id, user);
     return user;
@@ -623,6 +641,10 @@ export class MockDynamoRepository implements ISocietyRepository {
 
   async getMembership(societyId: string, userId: string): Promise<SocietyMembership | null> {
     return this.memberships.get(`${societyId}#${userId}`) || null;
+  }
+
+  async listUserMemberships(userId: string): Promise<SocietyMembership[]> {
+    return [...this.memberships.values()].filter((m) => m.userId === userId);
   }
 
   async createMembership(membership: SocietyMembership): Promise<SocietyMembership> {
@@ -745,7 +767,7 @@ export class MockDynamoRepository implements ISocietyRepository {
     date?: string,
     direction?: RideOccurrence['direction']
   ): Promise<RideOccurrence[]> {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = istDateString();
     const result: RideOccurrence[] = [];
     for (const [key, occ] of this.occurrences.entries()) {
       if (
@@ -775,24 +797,6 @@ export class MockDynamoRepository implements ISocietyRepository {
     return result.sort((a, b) => b.journeyDate.localeCompare(a.journeyDate));
   }
 
-  async cancelRideOccurrence(
-    societyId: string,
-    journeyId: string,
-    userId: string,
-    reason: string
-  ): Promise<RideOccurrence> {
-    const occ = this.occurrences.get(`${societyId}#${journeyId}`);
-    if (!occ) throw new Error('Journey not found');
-    if (occ.offererUserId !== userId) throw new Error('Unauthorized to cancel this journey');
-
-    occ.status = 'CANCELLED';
-    occ.cancellationReason = reason;
-    occ.cancelledBy = userId;
-    occ.updatedAt = new Date().toISOString();
-    this.occurrences.set(`${societyId}#${journeyId}`, occ);
-    return occ;
-  }
-
   async updateRideOccurrence(
     societyId: string,
     journeyId: string,
@@ -812,35 +816,23 @@ export class MockDynamoRepository implements ISocietyRepository {
     return updated;
   }
 
-  async deleteRideOccurrence(
+  async cancelRideWithRequests(
     societyId: string,
     journeyId: string,
-    userId: string
-  ): Promise<void> {
-    const occ = this.occurrences.get(`${societyId}#${journeyId}`);
-    if (!occ) throw new Error('Journey not found');
-    if (occ.offererUserId !== userId) throw new Error('Unauthorized to delete this journey');
-
-    this.occurrences.delete(`${societyId}#${journeyId}`);
-  }
-
-  async updateAvailableSeats(
-    societyId: string,
-    journeyId: string,
-    seatDelta: number
-  ): Promise<RideOccurrence> {
-    const occ = this.occurrences.get(`${societyId}#${journeyId}`);
-    if (!occ) throw new Error('Journey not found');
-
-    const newSeats = occ.availableSeats + seatDelta;
-    if (newSeats < 0) throw new Error('No remaining seats available');
-    if (newSeats > occ.totalSeats) throw new Error('Invalid seat count exceeds capacity');
-
-    occ.availableSeats = newSeats;
-    occ.status = newSeats === 0 ? 'FULL' : newSeats < occ.totalSeats ? 'PARTIALLY_BOOKED' : 'OPEN';
-    occ.updatedAt = new Date().toISOString();
-    this.occurrences.set(`${societyId}#${journeyId}`, occ);
-    return occ;
+    offererUserId: string,
+    reason: string
+  ): Promise<RideCancellationResult> {
+    // No awaits between read and write: atomic on the single JS thread
+    const journey = this.occurrences.get(`${societyId}#${journeyId}`) ?? null;
+    const requests = [...this.requests.values()].filter(
+      (r) => r.societyId === societyId && r.journeyId === journeyId
+    );
+    const result = planCancelRide(journey, requests, offererUserId, reason, new Date().toISOString());
+    if (result.ok) {
+      this.occurrences.set(`${societyId}#${journeyId}`, result.journey);
+      for (const r of result.affectedRequests) this.requests.set(`${societyId}#${r.id}`, r);
+    }
+    return result;
   }
 
   // Ride Requests
@@ -873,19 +865,42 @@ export class MockDynamoRepository implements ISocietyRepository {
     return result;
   }
 
-  async updateRequestStatus(
+  async acceptRideRequest(
     societyId: string,
     requestId: string,
-    status: RideRequest['status'],
+    offererUserId: string,
     note?: string
-  ): Promise<RideRequest> {
-    const req = this.requests.get(`${societyId}#${requestId}`);
-    if (!req) throw new Error('Request not found');
-    req.status = status;
-    if (note) req.responseNote = note;
-    req.updatedAt = new Date().toISOString();
-    this.requests.set(`${societyId}#${requestId}`, req);
-    return req;
+  ): Promise<BookingResult> {
+    return this.applyBooking(societyId, requestId, (journey, request, now) =>
+      planAccept(journey, request, offererUserId, note, now)
+    );
+  }
+
+  async closeRideRequest(
+    societyId: string,
+    requestId: string,
+    actor: { userId: string; as: 'OFFERER' | 'SEEKER' },
+    note?: string
+  ): Promise<BookingResult> {
+    return this.applyBooking(societyId, requestId, (journey, request, now) =>
+      planClose(journey, request, actor, note, now)
+    );
+  }
+
+  // No awaits between read and write: atomic on the single JS thread
+  private applyBooking(
+    societyId: string,
+    requestId: string,
+    plan: (journey: RideOccurrence | null, request: RideRequest | null, now: string) => BookingResult
+  ): BookingResult {
+    const request = this.requests.get(`${societyId}#${requestId}`) ?? null;
+    const journey = request ? this.occurrences.get(`${societyId}#${request.journeyId}`) ?? null : null;
+    const result = plan(journey, request, new Date().toISOString());
+    if (result.ok) {
+      this.occurrences.set(`${societyId}#${result.journey.id}`, result.journey);
+      this.requests.set(`${societyId}#${result.request.id}`, result.request);
+    }
+    return result;
   }
 
   // Matches
@@ -929,9 +944,9 @@ export class MockDynamoRepository implements ISocietyRepository {
     status: ModerationReport['status'],
     resolutionNotes?: string,
     adminUserId?: string
-  ): Promise<ModerationReport> {
+  ): Promise<ModerationReport | null> {
     const report = this.reports.find((r) => r.societyId === societyId && r.id === reportId);
-    if (!report) throw new Error('Report not found');
+    if (!report) return null;
     report.status = status;
     if (resolutionNotes) report.resolutionNotes = resolutionNotes;
     if (adminUserId) report.resolvedBy = adminUserId;
@@ -946,7 +961,8 @@ export class MockDynamoRepository implements ISocietyRepository {
   async listAuditEvents(societyId: string): Promise<AuditEvent[]> {
     return this.auditEvents
       .filter((e) => e.societyId === societyId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 100);
   }
 
   // In-App & Push Notifications
@@ -966,13 +982,13 @@ export class MockDynamoRepository implements ISocietyRepository {
     return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  async markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<void> {
+  async markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<boolean> {
     const key = `${societyId}#${notificationId}`;
     const notif = this.notifications.get(key);
-    if (notif && notif.userId === userId) {
-      notif.read = true;
-      this.notifications.set(key, notif);
-    }
+    if (!notif || notif.userId !== userId) return false;
+    notif.read = true;
+    this.notifications.set(key, notif);
+    return true;
   }
 
   async markAllNotificationsAsRead(societyId: string, userId: string): Promise<void> {

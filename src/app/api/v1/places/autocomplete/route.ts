@@ -1,8 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BANGALORE_HUBS, PlaceSuggestion } from '@/lib/services/places-data';
+import { ONBOARDING_STATUSES, requireAuth } from '@/lib/api-auth';
+import { rateLimit } from '@/lib/rate-limit';
+import { PlacesQuerySchema } from '@/lib/validation/schemas';
+import { parseQuery } from '@/lib/validation/parse';
 
 // Server-side cache for geocoded Place IDs (prevents redundant Google API calls)
 const geocodeCache = new Map<string, { lat: number; lng: number; formattedAddress: string }>();
+const GEOCODE_CACHE_MAX = 1000;
+
+function cacheLocation(placeId: string, loc: { lat: number; lng: number; formattedAddress: string }) {
+  if (geocodeCache.size >= GEOCODE_CACHE_MAX) {
+    const oldest = geocodeCache.keys().next().value;
+    if (oldest !== undefined) geocodeCache.delete(oldest);
+  }
+  cacheLocation(placeId, loc);
+}
+
+interface GooglePrediction {
+  place_id: string;
+  description: string;
+  structured_formatting?: { main_text?: string; secondary_text?: string };
+}
+
+interface PhotonFeature {
+  geometry?: { coordinates?: [number, number] };
+  properties?: {
+    name?: string;
+    street?: string;
+    district?: string;
+    locality?: string;
+    city?: string;
+    state?: string;
+    countrycode?: string;
+    osm_type?: string;
+    osm_id?: number;
+  };
+}
 
 /**
  * Production Places Autocomplete API Endpoint
@@ -17,9 +51,22 @@ const geocodeCache = new Map<string, { lat: number; lng: number; formattedAddres
  *    curated Bangalore Tech Parks & localities dataset with fuzzy token matching.
  */
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const query = (searchParams.get('q') || '').trim();
-  const placeId = searchParams.get('placeId'); // Optional: fetch exact lat/lng for selected place
+  // Signed-in residents only (including onboarding), since lookups can bill the Maps API key
+  const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
+  if (auth instanceof NextResponse) return auth;
+
+  const limit = rateLimit(`places:${auth.userId}`, 60, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many searches. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+    );
+  }
+
+  const params = parseQuery(req, PlacesQuerySchema);
+  if (params instanceof NextResponse) return params;
+  const query = params.q ?? '';
+  const placeId = params.placeId; // Optional: fetch exact lat/lng for selected place
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -34,7 +81,7 @@ export async function GET(req: NextRequest) {
     const localMatch = BANGALORE_HUBS.find((h) => h.placeId === placeId);
     if (localMatch) {
       const loc = { lat: localMatch.lat, lng: localMatch.lng, formattedAddress: `${localMatch.primaryText}, ${localMatch.secondaryText}` };
-      geocodeCache.set(placeId, loc);
+      cacheLocation(placeId, loc);
       return NextResponse.json({ location: loc });
     }
 
@@ -51,7 +98,7 @@ export async function GET(req: NextRequest) {
               lng: data.result.geometry.location.lng,
               formattedAddress: data.result.formatted_address || '',
             };
-            geocodeCache.set(placeId, loc);
+            cacheLocation(placeId, loc);
             return NextResponse.json({ location: loc });
           }
         }
@@ -60,10 +107,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Default fallback to central Bangalore coordinates
-    return NextResponse.json({
-      location: { lat: 12.9716, lng: 77.5946, formattedAddress: 'Bangalore, Karnataka' },
-    });
+    // Never guess a location: the client asks the user to pick again
+    return NextResponse.json({ error: 'Location not found for this place' }, { status: 404 });
   }
 
   // 2. Query Google Places Predictions if API Key exists
@@ -80,10 +125,11 @@ export async function GET(req: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'OK' && data.predictions && data.predictions.length > 0) {
-          const suggestions: PlaceSuggestion[] = data.predictions.map((p: any) => ({
+          const suggestions: PlaceSuggestion[] = data.predictions.map((p: GooglePrediction) => ({
             placeId: p.place_id,
             primaryText: p.structured_formatting?.main_text || p.description,
             secondaryText: p.structured_formatting?.secondary_text || 'Bangalore, Karnataka',
+            // Placeholder: the client resolves exact coordinates via ?placeId=
             lat: 12.9716,
             lng: 77.5946,
           }));
@@ -130,21 +176,23 @@ export async function GET(req: NextRequest) {
         const osmData = await osmRes.json();
         if (osmData.features && Array.isArray(osmData.features)) {
           osmSuggestions = osmData.features
-            .filter((f: any) => f.properties?.countrycode === 'IN' || !f.properties?.countrycode)
-            .map((f: any, idx: number) => {
+            .filter((f: PhotonFeature) => f.properties?.countrycode === 'IN' || !f.properties?.countrycode)
+            // Skip results without coordinates rather than guessing a location
+            .filter((f: PhotonFeature) => Array.isArray(f.geometry?.coordinates))
+            .map((f: PhotonFeature, idx: number) => {
               const p = f.properties || {};
-              const coords = f.geometry?.coordinates || [77.5946, 12.9716];
+              const coords = f.geometry!.coordinates!;
               const name = p.name || p.street || p.district || query;
               const secondaryParts = [p.locality, p.district, p.city || 'Bengaluru', p.state]
                 .filter(Boolean)
                 .filter((v, i, a) => a.indexOf(v) === i && v !== name);
 
               return {
-                placeId: `osm_${p.osm_type || 'N'}_${p.osm_id || idx}_${Date.now()}`,
+                placeId: `osm_${p.osm_type || 'N'}_${p.osm_id ?? idx}`,
                 primaryText: name,
                 secondaryText: secondaryParts.length > 0 ? secondaryParts.join(', ') : 'Bangalore, Karnataka',
-                lat: coords[1] || 12.9716,
-                lng: coords[0] || 77.5946,
+                lat: coords[1],
+                lng: coords[0],
               };
             });
         }

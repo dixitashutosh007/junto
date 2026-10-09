@@ -18,8 +18,6 @@ export const INDIAN_STATE_CODES = [
  * Standard Indian State pattern: e.g. KA01AB1234 or KA-01-AB-1234
  * Bharat Series pattern: e.g. 22BH1234AA or 22-BH-1234-AA
  */
-const REGEX_STANDARD = /^([A-Z]{2})[- ]?([0-9]{1,2})[- ]?([A-Z]{0,3})[- ]?([0-9]{4})$/;
-const REGEX_BHARAT_SERIES = /^([0-9]{2})[- ]?(BH)[- ]?([0-9]{4})[- ]?([A-Z]{1,2})$/;
 
 export function formatIndianRegistration(input: string): string {
   const clean = input.toUpperCase().replace(/[^A-Z0-9]/g, '');

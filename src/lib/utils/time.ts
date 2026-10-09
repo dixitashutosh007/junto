@@ -1,0 +1,100 @@
+/**
+ * Junto time handling. All ride dates and times are India Standard Time
+ * (UTC+05:30, no daylight saving), regardless of the device or server
+ * time zone.
+ *
+ * - Dates are `YYYY-MM-DD` strings in IST.
+ * - Times are ISO strings with an explicit offset: `2026-10-10T08:30:00+05:30`.
+ */
+
+export const IST_TIME_ZONE = 'Asia/Kolkata';
+const IST_OFFSET = '+05:30';
+
+const isoDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: IST_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const hhmmFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: IST_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+const displayTimeFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const weekdayFormatter = new Intl.DateTimeFormat('en-IN', { timeZone: IST_TIME_ZONE, weekday: 'short' });
+const dayLabelFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  month: 'short',
+  day: 'numeric',
+});
+
+/** The IST calendar date (`YYYY-MM-DD`) of an instant; defaults to now */
+export function istDateString(date: Date = new Date()): string {
+  return isoDateFormatter.format(date);
+}
+
+/** Adds whole days to a `YYYY-MM-DD` date */
+export function addDays(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Combines an IST date and `HH:mm` into an ISO string with the IST offset */
+export function istDateTime(dateStr: string, hhmm: string): string {
+  return `${dateStr}T${hhmm}:00${IST_OFFSET}`;
+}
+
+/** `HH:mm` (24-hour) in IST, e.g. for time inputs */
+export function istTimeHHMM(iso: string): string {
+  return hhmmFormatter.format(new Date(iso));
+}
+
+/** Human-readable IST time, e.g. "08:30 am" */
+export function formatIstTime(iso: string): string {
+  return displayTimeFormatter.format(new Date(iso));
+}
+
+/** The IST date part of an ISO date-time */
+export function istDateOf(iso: string): string {
+  return istDateString(new Date(iso));
+}
+
+/** "Today", "Tomorrow" or the date itself for a `YYYY-MM-DD` date */
+export function relativeDayLabel(dateStr: string, now: Date = new Date()): string {
+  const today = istDateString(now);
+  if (dateStr === today) return 'Today';
+  if (dateStr === addDays(today, 1)) return 'Tomorrow';
+  return dateStr;
+}
+
+export interface DayOption {
+  dateStr: string;
+  weekday: string;
+  label: string;
+}
+
+/** Day picker options from today through `count` days ahead, in IST */
+export function upcomingIstDays(count: number, now: Date = new Date()): DayOption[] {
+  const today = istDateString(now);
+  const days: DayOption[] = [];
+  for (let i = 0; i <= count; i++) {
+    const dateStr = addDays(today, i);
+    const noon = new Date(`${dateStr}T12:00:00${IST_OFFSET}`);
+    days.push({
+      dateStr,
+      weekday: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : weekdayFormatter.format(noon),
+      label: dayLabelFormatter.format(noon),
+    });
+  }
+  return days;
+}

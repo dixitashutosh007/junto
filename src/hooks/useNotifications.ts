@@ -1,27 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useIsClient } from '@/hooks/useIsClient';
 
 export function useNotifications() {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [isSupported, setIsSupported] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
-      setIsSupported(true);
-      setPermission(Notification.permission);
-
-      // Register service worker if not already registered
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('ServiceWorker registered with scope:', registration.scope);
-        })
-        .catch((err) => {
-          console.warn('ServiceWorker registration error:', err);
-        });
-    }
-  }, []);
+  const isClient = useIsClient();
+  const isSupported = isClient && 'Notification' in window && 'serviceWorker' in navigator;
+  // Set after the user answers the permission prompt; otherwise read the browser's value
+  const [answeredPermission, setPermission] = useState<NotificationPermission | null>(null);
+  const permission: NotificationPermission =
+    answeredPermission ?? (isSupported ? Notification.permission : 'default');
 
   const requestPermission = async () => {
     if (!isSupported) return false;
@@ -32,7 +20,7 @@ export function useNotifications() {
         // Send a friendly local test notification
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
-          reg.showNotification('SocietyApps Notifications Enabled', {
+          reg.showNotification('Junto Notifications Enabled', {
             body: 'You will now receive updates on matches, seat requests, and confirmations.',
             icon: '/icons/icon-192.png',
           });

@@ -1,9 +1,9 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
-  User,
   Mail,
   Home,
   Car,
@@ -14,11 +14,10 @@ import {
   ShieldCheck,
   Send,
   Loader2,
-  MapPin,
   Sparkles,
 } from 'lucide-react';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
-import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -32,14 +31,15 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [email, setEmail] = useState(user?.email?.includes('@societyapps.org') ? '' : (user?.email || ''));
   const [flatNumber, setFlatNumber] = useState('');
   const [commuteRole, setCommuteRole] = useState<'SEEKER' | 'OFFERER'>('SEEKER');
-  const [workLocation, setWorkLocation] = useState(user?.workLocationName || 'Manyata Tech Park');
+  const [workLocation, setWorkLocation] = useState(user?.workLocationName || '');
+  const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY'>('PREFER_NOT_TO_SAY');
 
   // Vehicle Details (Mandatory if Offerer)
   const [vehicleType, setVehicleType] = useState<'CAR' | 'TWO_WHEELER'>('CAR');
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
-  const [color, setColor] = useState('White');
+  const color = '';
   const [regNumber, setRegNumber] = useState('');
   const [capacity, setCapacity] = useState(4);
   const [mileage, setMileage] = useState('15'); // km/L for fuel points estimation
@@ -100,7 +100,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
 
       // 1. If Offerer, register vehicle first
       if (commuteRole === 'OFFERER') {
-        const vehRes = await fetch('/api/v1/user/vehicles', {
+        const vehRes = await apiFetch('/api/v1/user/vehicles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -120,7 +120,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
       }
 
       // 2. Save profile updates and mark profile completed
-      const profileRes = await fetch('/api/v1/auth/me', {
+      const profileRes = await apiFetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,6 +129,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
           flatNumber: flatNumber.trim().toUpperCase(),
           commuteIntent: commuteRole,
           workLocationName: workLocation,
+          workLatitude: workCoords?.lat,
+          workLongitude: workCoords?.lng,
           gender,
           profileCompleted: true,
         }),
@@ -144,8 +146,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
       setTimeout(() => {
         onCompleted();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Error submitting application');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Error submitting application');
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +163,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               <Building2 className="w-4 h-4" />
             </span>
             <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-400">
-              {society?.name || 'Mahaveer Ranches'} Resident Verification
+              {society?.name ?? 'Society'} Resident Verification
             </span>
           </div>
           <h2 className="text-lg font-extrabold text-white">Complete Your Resident Profile</h2>
@@ -222,8 +224,28 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                     placeholder="name@company.com"
                     className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
                   />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3.5" />
+                  <Mail className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="onboarding-gender" className="text-xs font-bold text-slate-800 block mb-1">
+                  Gender
+                </label>
+                <select
+                  id="onboarding-gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as typeof gender)}
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
+                >
+                  <option value="FEMALE">Female</option>
+                  <option value="MALE">Male</option>
+                  <option value="OTHER">Other</option>
+                  <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Only used for rides an offerer limits to women or men. Never shown to other residents.
+                </p>
               </div>
 
               {/* Flat Number */}
@@ -241,7 +263,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                     placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
                     className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
                   />
-                  <Home className="w-4 h-4 text-slate-400 absolute right-3 top-3.5" />
+                  <Home className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
                 {society?.settings?.flat_format_example && (
                   <p className="text-[10px] text-slate-500 mt-1">
@@ -278,7 +300,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                   onClick={() => setCommuteRole('OFFERER')}
                   className={`py-3 px-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
                     commuteRole === 'OFFERER'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
@@ -431,7 +453,10 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               </label>
               <PlacesAutocompleteInput
                 value={workLocation}
-                onChange={(loc) => setWorkLocation(loc)}
+                onChange={(loc, place) => {
+                  setWorkLocation(loc);
+                  setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
+                }}
                 placeholder="Search workplace, office campus, tech park or metro..."
                 label=""
                 required
@@ -448,7 +473,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   isLegalFullyAccepted
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                    : 'bg-rose-100 text-rose-800 border border-rose-300'
                 }`}>
                   {isLegalFullyAccepted ? 'Accepted ✓' : 'Action Required'}
                 </span>
@@ -472,7 +497,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -610,8 +635,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
                   isLegalFullyAccepted
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
+                    : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />

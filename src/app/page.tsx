@@ -1,5 +1,8 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
+import { Loading, LoadError } from '@/components/ui/LoadState';
+import { formatIstTime, istDateString } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -11,7 +14,6 @@ import {
   Users,
   ShieldCheck,
   ChevronRight,
-  ArrowRight,
   AlertCircle,
   Sparkles,
   MessageSquare,
@@ -21,7 +23,7 @@ import {
   Phone,
 } from 'lucide-react';
 import Link from 'next/link';
-import { PublicJourneyView } from '@/types';
+import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -31,7 +33,9 @@ import { AppHubScreen } from '@/components/AppHubScreen';
 export default function HomePage() {
   const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
-  const [matches, setMatches] = useState<any[]>([]);
+  const [matches, setMatches] = useState<
+    { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [requestStatusMap, setRequestStatusMap] = useState<Record<string, string>>({});
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -40,57 +44,54 @@ export default function HomePage() {
 
   const isApproved = membership?.status === 'ACTIVE';
 
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
+        setLoadError('');
         // Load available rides
-        const res = await fetch('/api/v1/rides', {
-          headers: {
-            'x-dev-user-id': activePersona,
-            'x-society-id': 'soc-ggh-001',
-          },
-        });
+        const res = await apiFetch('/api/v1/rides');
         if (res.ok) {
           const data = await res.json();
           setRides(data.rides || []);
+        } else if (res.status !== 401 && res.status !== 403) {
+          setLoadError('Could not load society rides.');
         }
 
-        // Load automated matches for user commute
-        const matchRes = await fetch('/api/v1/rides/matches', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-dev-user-id': activePersona,
-            'x-society-id': 'soc-ggh-001',
-          },
-          body: JSON.stringify({
-            dropoffName: 'Manyata Tech Park',
-            dropoffLat: 13.05,
-            dropoffLng: 77.62,
-          }),
-        });
-        if (matchRes.ok) {
-          const matchData = await matchRes.json();
-          setMatches(matchData.matches || []);
+        // Matches need the resident's saved work location
+        if (user?.workLatitude !== undefined && user?.workLongitude !== undefined) {
+          const matchRes = await apiFetch('/api/v1/rides/matches', {
+            json: {
+              dropoffName: user.workLocationName,
+              dropoffLat: user.workLatitude,
+              dropoffLng: user.workLongitude,
+            },
+          });
+          if (matchRes.ok) {
+            const matchData = await matchRes.json();
+            setMatches(matchData.matches || []);
+          }
+        } else {
+          setMatches([]);
         }
-      } catch (err) {
-        console.error('Error fetching home data', err);
+      } catch {
+        setLoadError('Connection problem. Check your internet and try again.');
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, [activePersona]);
+  }, [activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName, reloadKey]);
 
   const handleRequestRide = async (journeyId: string) => {
     try {
-      const res = await fetch('/api/v1/rides/requests', {
+      const res = await apiFetch('/api/v1/rides/requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           journeyId,
@@ -132,7 +133,7 @@ export default function HomePage() {
             <Users className="w-6 h-6" />
           </div>
           <h2 className="text-lg font-bold">Complete Resident Verification</h2>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-500 leading-relaxed">
             Please complete your mandatory profile details (flat number, name, email & commute role) to submit your membership for validation.
           </p>
         </div>
@@ -156,7 +157,7 @@ export default function HomePage() {
               Your Account is Not Yet Validated
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              Your resident application for <span className="font-bold text-slate-800">{society?.name || 'Mahaveer Ranches'}</span> (Flat <span className="font-bold text-slate-800">{membership?.flatNumber || 'Submitted'}</span>) is pending review by the Society Management Committee.
+              Your resident application for <span className="font-bold text-slate-800">{society?.name ?? 'your society'}</span> (Flat <span className="font-bold text-slate-800">{membership?.flatNumber || 'Submitted'}</span>) is pending review by the Society Management Committee.
             </p>
           </div>
 
@@ -175,7 +176,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             For security, community apps (RideShare, Directory) unlock automatically once approved by your society admin.
           </p>
 
@@ -278,14 +279,14 @@ export default function HomePage() {
             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
               Commute Preference
             </span>
-            <span className="text-[10px] font-medium text-slate-400">Sets your default view</span>
+            <span className="text-[10px] font-medium text-slate-500">Sets your default view</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
             <button
               onClick={() => updateCommuteIntent('OFFERER')}
               className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 user?.commuteIntent === 'OFFERER'
-                  ? 'bg-emerald-600 text-white shadow-sm font-bold'
+                  ? 'bg-emerald-700 text-white shadow-sm font-bold'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
               }`}
             >
@@ -317,7 +318,7 @@ export default function HomePage() {
             <Search className="w-5 h-5" />
           </div>
           <span className="font-bold text-base leading-tight">Find a Ride</span>
-          <span className="text-slate-400 text-xs mt-1">Join a co-resident commute</span>
+          <span className="text-slate-500 text-xs mt-1">Join a co-resident commute</span>
         </Link>
 
         <Link
@@ -339,14 +340,14 @@ export default function HomePage() {
           className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
         >
           <span>My Offered Rides</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
         </Link>
         <Link
           href="/rides/my-requests"
           className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
         >
           <span>My Ride Requests</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
         </Link>
       </div>
 
@@ -367,6 +368,16 @@ export default function HomePage() {
       )}
 
       {/* Matches For You */}
+      {user && (user.workLatitude === undefined || user.workLongitude === undefined) && (
+        <div className="mx-5 mb-4 p-3 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
+          Pick your work location in{' '}
+          <Link href="/profile" className="font-semibold underline">
+            your profile
+          </Link>{' '}
+          to see rides that match your commute.
+        </div>
+      )}
+
       {matches.length > 0 && (
         <section className="px-5 mb-5">
           <div className="flex items-center justify-between mb-2.5">
@@ -392,13 +403,13 @@ export default function HomePage() {
                     <Clock className="w-3 h-3 text-zinc-500" />
                     8:00 AM – 8:20 AM
                   </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-700 text-white">
                     {item.match.qualityLabel} Match
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-zinc-600">
                   <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                    <MapPin className="w-3.5 h-3.5 text-zinc-500" />
                     <span className="font-medium text-zinc-800">{item.journey.destinationName}</span>
                   </div>
                   <span className="text-zinc-500">Detour: ~{item.match.detourMinutes} min</span>
@@ -423,7 +434,9 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-slate-400">Loading society rides...</div>
+          <Loading label="Loading society rides…" />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : rides.length === 0 ? (
           <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-slate-300 bg-white/70 shadow-2xs">
             <Car className="w-8 h-8 mx-auto text-slate-300 mb-2" />
@@ -467,15 +480,15 @@ export default function HomePage() {
                   <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-2 border border-slate-100">
                     <div className="flex items-center justify-between text-slate-700">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span className="font-bold text-slate-900">
-                          {new Date(ride.departureWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowStart)}
                           {' – '}
-                          {new Date(ride.departureWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowEnd)}
                         </span>
                       </div>
                       <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                        {ride.journeyDate === new Date().toISOString().split('T')[0]
+                        {ride.journeyDate === istDateString()
                           ? 'Today'
                           : ride.journeyDate}
                       </span>
@@ -492,7 +505,7 @@ export default function HomePage() {
                           <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
                             ⛽ ~{ride.fuelSharePointsEstimate.perPassengerPoints} Fuel Points
                           </span>
-                          <span className="text-slate-400">({ride.vehicle?.model || 'Car'} · {ride.fuelSharePointsEstimate.vehicleMileageKmPerLitre} km/L)</span>
+                          <span className="text-slate-500">({ride.vehicle?.model || 'Car'} · {ride.fuelSharePointsEstimate.vehicleMileageKmPerLitre} km/L)</span>
                         </div>
                         <span className="text-[10px] text-slate-500 font-medium" title="Settle directly with driver in person. No app payments.">
                           In-person settlement
@@ -522,7 +535,7 @@ export default function HomePage() {
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400 font-medium">From Society Gate</span>
+                    <span className="text-[11px] text-slate-500 font-medium">From Society Gate</span>
                     {isAccepted ? (
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accepted
@@ -567,11 +580,11 @@ export default function HomePage() {
 
       {/* Community Disclaimer Footer */}
       <footer className="mt-6 px-5 pt-4 border-t border-zinc-100 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-zinc-400 text-xs mb-1">
+        <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-xs mb-1">
           <AlertCircle className="w-3.5 h-3.5" />
           <span className="font-semibold">Community Facilitation Service</span>
         </div>
-        <p className="text-[10px] text-zinc-400 leading-relaxed max-w-xs mx-auto">
+        <p className="text-[10px] text-zinc-500 leading-relaxed max-w-xs mx-auto">
           SocietyApps connects verified co-residents travelling in compatible directions. We do not provide transportation or guarantee safety and punctuality. Residents independently verify vehicle and arrangements.
         </p>
       </footer>
@@ -581,7 +594,7 @@ export default function HomePage() {
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
         defaultMobile={user?.mobile}
-        onSuccess={(fbUser) => {
+        onSuccess={() => {
           setShowOtpModal(false);
         }}
       />

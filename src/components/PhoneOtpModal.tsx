@@ -1,70 +1,96 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-} from 'firebase/auth';
+import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase/config';
-import { Phone, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  DEV_OTP_BYPASS_ENABLED,
+  DEV_TEST_OTP,
+  OTP_RESEND_COOLDOWN_SECONDS,
+  getRecaptchaVerifier,
+  resetRecaptchaVerifier,
+  toE164IndianMobile,
+} from '@/lib/firebase/phone';
+import { Phone, KeyRound, AlertCircle, Loader2 } from 'lucide-react';
+import { User } from '@/types';
+import { clearLoggedOutFlag } from '@/context/AuthContext';
+
+const RECAPTCHA_CONTAINER_ID = 'recaptcha-container';
 
 interface PhoneOtpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (user: any) => void;
+  onSuccess: (user: User) => void;
   defaultMobile?: string;
+  /** Society invite code to join on first sign-in (from a /join link) */
+  societyCode?: string;
+  /** Skip the full page reload after sign-in */
+  skipReload?: boolean;
 }
 
-export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }: PhoneOtpModalProps) {
-  const [phone, setPhone] = useState(defaultMobile || '+91');
+export function PhoneOtpModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  defaultMobile = '',
+  societyCode,
+  skipReload = false,
+}: PhoneOtpModalProps) {
+  // Until the user edits it, the number field shows the default mobile
+  const [phoneInput, setPhone] = useState<string | null>(null);
+  const phone =
+    phoneInput ?? (defaultMobile ? (defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`) : '+91');
   const [verificationCode, setVerificationCode] = useState('');
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendAvailableAt, setResendAvailableAt] = useState(0);
+  const [now, setNow] = useState(0);
 
+  // Tick once a second while the resend cooldown is running
   useEffect(() => {
-    if (defaultMobile) setPhone(defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`);
-  }, [defaultMobile]);
+    if (resendAvailableAt <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [resendAvailableAt]);
 
-  const setupRecaptcha = () => {
-    if (typeof window === 'undefined') return null;
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(
-        firebaseAuth,
-        'recaptcha-container',
-        {
-          size: 'invisible',
-          callback: () => {
-            // reCAPTCHA solved
-          },
-        }
-      );
-    }
-    return (window as any).recaptchaVerifier;
-  };
+  const cooldownSeconds = Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
+    const e164 = toE164IndianMobile(phone);
+    if (!e164) {
+      setError('Enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    if (cooldownSeconds > 0) {
+      setError(`Please wait ${cooldownSeconds}s before requesting another code.`);
+      return;
+    }
+
+    setLoading(true);
     try {
-      const appVerifier = setupRecaptcha();
-      if (!appVerifier) {
-        throw new Error('reCAPTCHA failed to initialize');
-      }
-      const confirmation = await signInWithPhoneNumber(firebaseAuth, phone, appVerifier);
+      const confirmation = await signInWithPhoneNumber(
+        firebaseAuth,
+        e164,
+        getRecaptchaVerifier(RECAPTCHA_CONTAINER_ID)
+      );
       setConfirmationResult(confirmation);
+      setResendAvailableAt(Date.now() + OTP_RESEND_COOLDOWN_SECONDS * 1000);
+      setNow(Date.now());
       setStep('OTP');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      resetRecaptchaVerifier(RECAPTCHA_CONTAINER_ID);
       console.warn('Firebase Phone Auth send attempt result:', err);
-      // In dev mode or if SMS limits are hit, allow testing OTP transition
-      if (process.env.NODE_ENV !== 'production' || phone.includes('9876543210')) {
+      if (DEV_OTP_BYPASS_ENABLED) {
+        // Development without Firebase: continue to the OTP step and use the test code
         setStep('OTP');
       } else {
-        setError(err.message || 'Unable to send SMS code. Please check number format.');
+        setError('Unable to send the SMS code. Please check the number and try again.');
       }
     } finally {
       setLoading(false);
@@ -77,42 +103,43 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
     setLoading(true);
 
     try {
-      const isProd = process.env.NODE_ENV === 'production';
       let idToken: string;
-      let verifiedUser: any;
 
-      if (!isProd && (verificationCode === '123456' || !confirmationResult)) {
-        // Dev/testing environment bypass only
+      if (DEV_OTP_BYPASS_ENABLED && (verificationCode === DEV_TEST_OTP || !confirmationResult)) {
+        // Development only: map test numbers to seeded demo users
         if (phone.includes('9876543210')) idToken = 'dev-token-usr-admin-001';
         else if (phone.includes('9822233344')) idToken = 'dev-token-usr-seeker-001';
         else idToken = 'dev-token-usr-offerer-001';
-        verifiedUser = { phoneNumber: phone, uid: idToken.replace('dev-token-', '') };
       } else {
         if (!confirmationResult) {
           throw new Error('Please request an SMS verification code first.');
         }
         const result = await confirmationResult.confirm(verificationCode);
-        verifiedUser = result.user;
         idToken = await result.user.getIdToken();
       }
 
       // Establish session with server
-      const sessionRes = await fetch('/api/v1/auth/session', {
+      const sessionRes = await apiFetch('/api/v1/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, societyCode }),
       });
 
-      if (sessionRes.ok) {
-        const sessionData = await sessionRes.json();
-        onSuccess(sessionData.user || verifiedUser);
-        onClose();
-        window.location.reload(); // Refresh session state
-      } else {
-        throw new Error('Failed to create server session');
+      const sessionData = await sessionRes.json().catch(() => ({}));
+      if (!sessionRes.ok) {
+        throw new Error(sessionData.error || 'Failed to create server session');
       }
-    } catch (err: any) {
-      setError(err.message || 'Invalid or expired OTP code. Please check and retry.');
+
+      clearLoggedOutFlag();
+      onSuccess(sessionData.user);
+      onClose();
+      if (!skipReload) window.location.reload(); // Refresh session state
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Invalid or expired OTP code. Please check and retry.'
+      );
     } finally {
       setLoading(false);
     }
@@ -123,7 +150,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-150">
-        <div id="recaptcha-container"></div>
+        <div id={RECAPTCHA_CONTAINER_ID}></div>
 
         <div className="text-center mb-6">
           <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
@@ -149,10 +176,11 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
         {step === 'PHONE' ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-800 block mb-1">
+              <label htmlFor="mobile-number-91" className="text-xs font-bold text-slate-800 block mb-1">
                 Mobile Number (+91)
               </label>
               <input
+                id="mobile-number-91"
                 type="tel"
                 required
                 value={phone}
@@ -174,19 +202,28 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
                 disabled={loading}
                 className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send OTP'}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : cooldownSeconds > 0 ? (
+                  `Resend in ${cooldownSeconds}s`
+                ) : (
+                  'Send OTP'
+                )}
               </button>
             </div>
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-800 block mb-1">
+              <label htmlFor="6-digit-otp-code" className="text-xs font-bold text-slate-800 block mb-1">
                 6-Digit OTP Code
               </label>
               <input
+                id="6-digit-otp-code"
                 type="text"
                 required
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
@@ -205,7 +242,7 @@ export function PhoneOtpModal({ isOpen, onClose, onSuccess, defaultMobile = '' }
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Continue'}
               </button>

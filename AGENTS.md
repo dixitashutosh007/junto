@@ -55,7 +55,7 @@ This document serves as the single source of truth for AI coding agents, autonom
 - **Framework**: Next.js 16 (App Router, Turbopack, React 19).
 - **Styling**: Tailwind CSS v4, Lucide React icons.
 - **Database Engine**:
-  - Cloud Production: Google Cloud Firestore (Standard/Enterprise, credentials in `firebase-service-account.json` or GCP default credentials).
+  - Cloud Production: Google Cloud Firestore (Standard/Enterprise). Credentials come from the `FIREBASE_SERVICE_ACCOUNT_KEY` (or `_B64`) environment variable in Amplify; never commit a service-account file. Production refuses to start without them.
   - Local/Testing: `MockDynamoRepository` (`src/lib/db/mock-repository.ts`) with deterministic in-memory indexing and tenant isolation.
   - Abstraction: `ISocietyRepository` interface (`src/lib/db/repository.interface.ts`).
 - **Maps & Geocoding**:
@@ -84,6 +84,8 @@ This document serves as the single source of truth for AI coding agents, autonom
   - **Admins**: See `Admin Portal`, `Residents`, `Moderation`, `Profile`. Commuter actions (`Find Ride`, `Offer Ride`) are hidden.
   - **Ride Offerers**: See `Home`, `Offer Ride`, `My Rides`, `Profile`.
   - **Ride Seekers**: See `Home`, `Find Ride`, `My Requests`, `Profile`.
+  - **Both**: See `Home`, `Find Ride`, `Offer Ride`, `Profile`.
+  - The menu follows the membership role and the user's commute preference, never a user ID.
 
 ### Audit Logging:
 - All administrative lifecycle actions (approvals, rejections, suspensions, settings updates, RBAC role modifications) are logged via `recordAuditEvent()` and queryable via `/api/v1/admin/audit-logs`.
@@ -111,7 +113,7 @@ This document serves as the single source of truth for AI coding agents, autonom
 │   │   ├── rides/offer/page.tsx            # Offer a ride flow
 │   │   ├── rides/find/page.tsx             # Find & match rides flow
 │   │   └── api/v1/
-│   │       ├── auth/session/route.ts       # Secure Firebase/Cognito token exchange
+│   │       ├── auth/session/route.ts       # Firebase ID token → signed session cookie
 │   │       ├── auth/me/route.ts            # Profile & onboarding persistence
 │   │       ├── admin/residents/route.ts    # Approve/Reject/Block resident endpoint
 │   │       ├── admin/rbac/route.ts         # Granular RBAC permissions endpoint
@@ -144,7 +146,55 @@ When creating or extending sibling apps (e.g., **Community**, **Marketplace**, *
 1. **Consume `useAuth()`**: Always rely on `AuthContext` for `society`, `user`, and `membership` status.
 2. **Gate on `membership.status === 'ACTIVE'`**: Never render interactive features to users whose status is `PENDING_APPROVAL` or unverified.
 3. **Persist within `ISocietyRepository`**: Add new domain methods to the repository interface and implement both mock and Firestore stores with `${societyId}` partitioning.
-4. **Run Verification**:
-   - Run tests: `npx vitest run`
-   - Run Next.js build: `npm run build`
-   - Commit & push to `main` for automated AWS Amplify deployment.
+4. **Run Verification**: `npm run typecheck`, `npm test`, `npm run lint` and `npm run build` must all pass.
+5. **Ship through a pull request**: CI runs the same checks on every PR. Merging to `main` deploys to production through AWS Amplify, so never push straight to `main`.
+6. **Follow the project rules in section 8.**
+
+---
+
+## 8. Junto Project Rules (enforced)
+
+Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODUCTION_ROADMAP.md` for the current hardening plan; some rules below describe the target state that the roadmap phases are moving the code towards.
+
+**Stack:** Next.js 16 App Router, React 19, Firebase Phone Auth + Firestore (admin SDK, server-only), Zod 4, Tailwind 4, Vitest. Deployed on AWS Amplify (`amplify.yml`).
+
+**Commands** (all must pass before committing; CI runs them on every PR):
+- `npm ci --legacy-peer-deps`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint` (zero warnings allowed)
+- `npm run build`
+
+**Frontend conventions:**
+- Call the API with `apiFetch` from `src/lib/api-client.ts` (never hand-build `x-dev-user-id` / `x-society-id` headers); load data with `useApiData`.
+- Read the current date or browser-only APIs during render via `useIsClient`, not by copying them into state in an effect.
+- Use `Dialog` / `ConfirmDialog` from `src/components/ui/Dialog.tsx` (never `window.confirm`), and `Loading` / `LoadError` for load states.
+- Every form control needs a label; icon-only buttons and links need `aria-label`; text must meet WCAG AA contrast (no `*-400` grey text).
+
+**Layout:**
+- API routes: `src/app/api/v1/**/route.ts`
+- Auth for routes: `src/lib/api-auth.ts` (`requireAuth`); sessions: `src/lib/auth/session.ts`
+- Data access only through `getRepository()` (`src/lib/db`); `FirestoreRepository` in production, `MockDynamoRepository` (seeded demo data) in development and tests
+- Shared types: `src/types`; request schemas: `src/lib/validation/schemas.ts`
+- Route tests: `src/app/api/**/__tests__/*.test.ts`, using `makeRequest` and `resetRepository` from `src/test/route-helpers.ts`; mock Firebase with `src/test/firebase-admin-mock.ts` to test production auth
+
+**Every API route must:**
+- Start with `const auth = await requireAuth(req, { statuses?, roles? }); if (auth instanceof NextResponse) return auth;`. It returns 401 when signed out and 403 unless the membership is `ACTIVE` (pass `ONBOARDING_STATUSES` only for onboarding routes).
+- Validate the body and query with a Zod schema via `parseBody(req, Schema)` / `parseQuery(req, Schema)` from `src/lib/validation/parse.ts`; never destructure raw `req.json()`.
+- Check ownership or role on the target entity (the offerer, the seeker, or an admin of *that* society).
+- Admin routes pass `permission: 'canApproveResidents' | 'canManageSettings' | 'canModerateReports' | 'canViewAuditLogs'` to `requireAuth`.
+- Return generic error messages (`serverError(context, err)`); never echo `err.message` to the client.
+- Have a route test covering the unauthorized and wrong-user cases.
+
+**Security invariants:**
+- The server uses the Firestore admin SDK, which bypasses `firestore.rules`; the rules deny all direct client access. The API is the only access-control boundary.
+- Dev shortcuts (`x-dev-user-id`, the persona switcher, `dev-token-*` tokens, OTP `123456`, `MockDynamoRepository`) must be unreachable when `NODE_ENV === 'production'`.
+- Contact data (mobile, flat number, number plate) is shown only to accepted ride participants, via `formatPublicJourneyView` in `src/lib/services/privacy.ts`.
+- Never hardcode a society ID; use `auth.societyId`.
+- Never commit secrets; service-account keys stay in Amplify environment variables and never use the `NEXT_PUBLIC_` prefix.
+
+**Data conventions:**
+- Seat counts change only through `acceptRideRequest` / `closeRideRequest` / `cancelRideWithRequests`, which apply the rules in `src/lib/services/seat-booking.ts` atomically.
+- Times are Asia/Kolkata: use `src/lib/utils/time.ts` (`istDateTime`, `istDateString`, `formatIstTime`); never `toISOString().split('T')[0]` or `toLocaleTimeString` without a time zone.
+- IDs come from `crypto.randomUUID()`, not `Date.now()`.
+- No placeholder data (flat numbers, distances, coordinates) in production responses; fail or mark the value as unknown.

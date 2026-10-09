@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { formatPublicJourneyView } from '@/lib/services/privacy';
 import { RideOccurrence } from '@/types';
-import { CreateRideSchema } from '@/lib/validation/schemas';
+import {
+  CancelRideQuerySchema,
+  CreateRideSchema,
+  ListRidesQuerySchema,
+  UpdateRideSchema,
+} from '@/lib/validation/schemas';
+import { parseBody, parseQuery } from '@/lib/validation/parse';
+import { estimateRoute } from '@/lib/services/matching';
+import { validateDepartureWindow } from '@/lib/services/ride-rules';
+import { journeyStatusForSeats } from '@/lib/services/seat-booking';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get('date') || undefined;
-  const myRidesOnly = searchParams.get('mine') === 'true';
+  const query = parseQuery(req, ListRidesQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const date = query.date;
+  const myRidesOnly = query.mine === 'true';
 
   const repo = getRepository();
 
@@ -58,15 +67,11 @@ export async function GET(req: NextRequest) {
 
 // Offer a ride / create a ride occurrence
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json().catch(() => ({}));
-  const parseResult = CreateRideSchema.safeParse(body);
-  if (!parseResult.success) {
-    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid ride parameters');
-  }
+  const body = await parseBody(req, CreateRideSchema);
+  if (body instanceof NextResponse) return body;
 
   const {
     vehicleId,
@@ -84,7 +89,11 @@ export async function POST(req: NextRequest) {
     totalSeats,
     genderPreference,
     visibility,
-  } = parseResult.data;
+  } = body;
+
+  const windowEnd = departureWindowEnd || departureWindowStart;
+  const windowError = validateDepartureWindow(journeyDate, departureWindowStart, windowEnd);
+  if (windowError) return errorResponse(windowError);
 
   const repo = getRepository();
 
@@ -93,47 +102,62 @@ export async function POST(req: NextRequest) {
   if (!vehicle || vehicle.userId !== auth.userId) {
     return errorResponse('Invalid vehicle selected');
   }
+  if (totalSeats > vehicle.capacity) {
+    return errorResponse(`This vehicle has room for at most ${vehicle.capacity} passenger(s)`);
+  }
 
-  const seats = totalSeats ? Number(totalSeats) : 2;
+  const society = await repo.getSocietyById(auth.societyId);
+  if (!society) return errorResponse('Society not found', 404);
 
+  // Rides start at the society unless the offerer picked another origin
+  const origin = {
+    name: originName || society.name,
+    lat: originLat ?? society.latitude,
+    lng: originLng ?? society.longitude,
+  };
+  const destination = { lat: destinationLat, lng: destinationLng };
+  const route = estimateRoute(origin, destination);
+
+  const now = new Date().toISOString();
   const occurrence: RideOccurrence = {
-    id: `jrn-${Date.now()}`,
+    id: `jrn-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     offererUserId: auth.userId,
     vehicleId,
     journeyDate,
     direction: direction || 'OUTBOUND_SOCIETY',
     departureWindowStart,
-    departureWindowEnd: departureWindowEnd || departureWindowStart,
-    originName: originName || 'Society Main Gate',
-    originLat: originLat || 12.9279,
-    originLng: originLng || 77.6751,
+    departureWindowEnd: windowEnd,
+    originName: origin.name,
+    originLat: origin.lat,
+    originLng: origin.lng,
     destinationName,
-    destinationPlaceId: destinationPlaceId || 'custom-place-id',
-    destinationLat: destinationLat || 13.0500,
-    destinationLng: destinationLng || 77.6200,
-    baselineDurationMinutes: 45,
-    baselineDistanceKm: 22,
-    totalSeats: seats,
-    availableSeats: seats,
-    genderPreference: genderPreference || 'ANY',
+    ...(destinationPlaceId ? { destinationPlaceId } : {}),
+    destinationLat,
+    destinationLng,
+    baselineDurationMinutes: route.durationMinutes,
+    baselineDistanceKm: route.distanceKm,
+    totalSeats,
+    availableSeats: totalSeats,
+    // Gender-restricted rides only where the society allows them
+    genderPreference: society.settings.allow_gender_preferences ? genderPreference : 'ANY',
     visibility: visibility || 'SOCIETY_WIDE',
     status: 'OPEN',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   };
 
   const saved = await repo.createRideOccurrence(occurrence);
 
   // Record audit
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'RIDE_OFFERED',
     entityType: 'RIDE_OCCURRENCE',
     entityId: saved.id,
-    metadata: { journeyDate, destinationName, seats },
+    metadata: { journeyDate, destinationName, seats: totalSeats },
     createdAt: new Date().toISOString(),
   });
 
@@ -142,18 +166,27 @@ export async function POST(req: NextRequest) {
 
 // Edit a ride occurrence (Offerer only)
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, UpdateRideSchema);
+  if (body instanceof NextResponse) return body;
   const { journeyId, destinationName, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } = body;
-
-  if (!journeyId) return errorResponse('Missing journeyId');
 
   const repo = getRepository();
   const existing = await repo.getRideOccurrence(auth.societyId, journeyId);
   if (!existing) return errorResponse('Ride not found', 404);
   if (existing.offererUserId !== auth.userId) return errorResponse('Unauthorized to edit this ride', 403);
+  if (existing.status === 'CANCELLED' || existing.status === 'COMPLETED' || existing.status === 'EXPIRED') {
+    return errorResponse('This ride can no longer be edited', 409);
+  }
+
+  const newStart = departureWindowStart ?? existing.departureWindowStart;
+  const newEnd = departureWindowEnd ?? existing.departureWindowEnd;
+  if (departureWindowStart || departureWindowEnd) {
+    const windowError = validateDepartureWindow(existing.journeyDate, newStart, newEnd);
+    if (windowError) return errorResponse(windowError);
+  }
 
   const updates: Partial<RideOccurrence> = {};
   if (destinationName) updates.destinationName = destinationName;
@@ -161,10 +194,13 @@ export async function PUT(req: NextRequest) {
   if (departureWindowEnd) updates.departureWindowEnd = departureWindowEnd;
   if (genderPreference) updates.genderPreference = genderPreference;
   if (totalSeats) {
-    const newTotal = Number(totalSeats);
     const bookedSeats = existing.totalSeats - existing.availableSeats;
-    updates.totalSeats = newTotal;
-    updates.availableSeats = Math.max(0, newTotal - bookedSeats);
+    if (totalSeats < bookedSeats) {
+      return errorResponse(`${bookedSeats} seat(s) are already booked on this ride`);
+    }
+    updates.totalSeats = totalSeats;
+    updates.availableSeats = totalSeats - bookedSeats;
+    updates.status = journeyStatusForSeats(updates.availableSeats);
   }
 
   const updated = await repo.updateRideOccurrence(auth.societyId, journeyId, auth.userId, updates);
@@ -172,22 +208,54 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ success: true, ride: updated });
 }
 
-// Delete or Cancel a ride occurrence (Offerer only)
+// Cancel a ride occurrence (Offerer only). The ride is kept for history;
+// everyone with a pending or accepted request is notified.
 export async function DELETE(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const journeyId = searchParams.get('journeyId');
-
-  if (!journeyId) return errorResponse('Missing journeyId');
+  const query = parseQuery(req, CancelRideQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const { journeyId, reason = 'Cancelled by the offerer' } = query;
 
   const repo = getRepository();
-  const existing = await repo.getRideOccurrence(auth.societyId, journeyId);
-  if (!existing) return errorResponse('Ride not found', 404);
-  if (existing.offererUserId !== auth.userId) return errorResponse('Unauthorized to delete this ride', 403);
+  const result = await repo.cancelRideWithRequests(auth.societyId, journeyId, auth.userId, reason);
+  if (!result.ok) {
+    if (result.reason === 'NOT_FOUND') return errorResponse('Ride not found', 404);
+    if (result.reason === 'FORBIDDEN') return errorResponse('Unauthorized to cancel this ride', 403);
+    return errorResponse('This ride has already been cancelled or completed', 409);
+  }
 
-  await repo.deleteRideOccurrence(auth.societyId, journeyId, auth.userId);
+  const now = new Date().toISOString();
+  for (const request of result.affectedRequests) {
+    await repo.createNotification({
+      id: `notif-${crypto.randomUUID()}`,
+      societyId: auth.societyId,
+      userId: request.seekerUserId,
+      title: 'Ride Cancelled',
+      body: `The ride to ${result.journey.destinationName} on ${result.journey.journeyDate} has been cancelled by the offerer.`,
+      type: 'RIDE_CANCELLED',
+      link: '/rides/find',
+      read: false,
+      createdAt: now,
+    });
+  }
 
-  return NextResponse.json({ success: true, message: 'Ride deleted successfully' });
+  await repo.recordAuditEvent({
+    id: `audit-${crypto.randomUUID()}`,
+    societyId: auth.societyId,
+    actorUserId: auth.userId,
+    action: 'RIDE_CANCELLED',
+    entityType: 'RIDE_OCCURRENCE',
+    entityId: journeyId,
+    metadata: { reason, notifiedSeekers: result.affectedRequests.length },
+    createdAt: now,
+  });
+
+  return NextResponse.json({
+    success: true,
+    message: 'Ride cancelled',
+    ride: result.journey,
+    notifiedSeekers: result.affectedRequests.length,
+  });
 }

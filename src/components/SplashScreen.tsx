@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { clearLoggedOutFlag, useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import {
   Car,
   ShieldCheck,
@@ -10,22 +11,19 @@ import {
   ArrowRight,
   Phone,
   Building2,
-  CheckCircle2,
   MapPin,
-  Clock,
-  Layers,
 } from 'lucide-react';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
-import Link from 'next/link';
 
 interface SplashScreenProps {
   onSuccessLogin?: () => void;
 }
 
 export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
-  const { society, switchPersona, refreshAuth } = useAuth();
+  const { society } = useAuth();
+  const router = useRouter();
+  const [inviteCode, setInviteCode] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'OFFERER' | 'SEEKER'>('OFFERER');
 
   return (
     <div className="flex-1 flex flex-col justify-between bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950 text-white min-h-[90vh] px-6 py-8 relative overflow-hidden">
@@ -54,7 +52,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
 
         <p className="text-sm text-slate-300 max-w-xs leading-relaxed font-normal">
           Peer-to-peer co-commute facilitation exclusively for verified residents of{' '}
-          <span className="text-white font-semibold">{society?.name || 'Mahaveer Ranches'}</span>.
+          <span className="text-white font-semibold">{society?.name ?? 'your society'}</span>.
         </p>
       </div>
 
@@ -66,7 +64,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">100% Verified Co-Residents</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Only approved residents from your society clubhouse and gates.
             </p>
           </div>
@@ -78,7 +76,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">Smart Detour Matching</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Matched strictly along your commute corridor with ≤ 10 min detours.
             </p>
           </div>
@@ -90,7 +88,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">Peer Facilitation (Zero Fares)</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Friendly shared rides to Manyata, Bellandur, Electronic City & Whitefield.
             </p>
           </div>
@@ -110,13 +108,34 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
         </button>
 
         {/* Secondary Action: Join with Society Invite Code */}
-        <Link
-          href={`/join/${society?.code || 'MR2024'}`}
-          className="w-full py-3 px-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const code = inviteCode.trim().toUpperCase();
+            if (code) router.push(`/join/${encodeURIComponent(code)}`);
+          }}
+          className="flex gap-2"
         >
-          <Building2 className="w-4 h-4 text-emerald-400" />
-          <span>New Resident? Register with Code ({society?.code || 'MR2024'})</span>
-        </Link>
+          <label htmlFor="invite-code" className="sr-only">
+            Society invite code
+          </label>
+          <input
+            id="invite-code"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value)}
+            placeholder="New resident? Society invite code"
+            autoCapitalize="characters"
+            className="flex-1 min-w-0 py-3 px-4 rounded-2xl bg-white/10 border border-white/15 text-white placeholder:text-slate-400 text-xs font-semibold outline-none focus:border-emerald-400"
+          />
+          <button
+            type="submit"
+            disabled={!inviteCode.trim()}
+            className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 disabled:opacity-50 border border-white/15 text-white font-semibold text-xs flex items-center gap-1.5 transition-all"
+          >
+            <Building2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+            <span>Join</span>
+          </button>
+        </form>
       </div>
 
       {/* Firebase Phone Auth OTP Modal */}
@@ -125,7 +144,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
         onClose={() => setShowOtpModal(false)}
         onSuccess={() => {
           setShowOtpModal(false);
-          localStorage.removeItem('societyapps_logged_out');
+          clearLoggedOutFlag();
           if (onSuccessLogin) onSuccessLogin();
           else window.location.reload();
         }}

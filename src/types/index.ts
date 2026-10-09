@@ -22,6 +22,9 @@ export interface Society {
   createdAt: string;
 }
 
+/** Society fields safe to show to its members (no invite code or settings) */
+export type SocietySummary = Pick<Society, 'id' | 'slug' | 'name' | 'address'>;
+
 export type MembershipRole = 'RESIDENT' | 'SOCIETY_ADMIN' | 'SUPER_ADMIN';
 
 export type MembershipStatus =
@@ -36,6 +39,8 @@ export type MembershipStatus =
 export interface User {
   id: string;
   cognitoSub: string;
+  /** Firebase Auth UID linked at phone sign-in, when it differs from id */
+  firebaseUid?: string;
   email: string;
   mobile: string;
   fullName: string;
@@ -104,7 +109,7 @@ export interface RideSchedule {
   originLat: number;
   originLng: number;
   destinationName: string;
-  destinationPlaceId: string;
+  destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   departureWindowStart: string; // "08:00"
@@ -140,7 +145,7 @@ export interface RideOccurrence {
   originLat: number;
   originLng: number;
   destinationName: string;
-  destinationPlaceId: string;
+  destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   baselineDurationMinutes: number;

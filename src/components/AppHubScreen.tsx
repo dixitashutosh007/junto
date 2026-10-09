@@ -1,16 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
-  Sparkles,
   ArrowRight,
-  ShieldCheck,
-  Building2,
-  Users,
   Grid,
-  CheckCircle2,
   GraduationCap,
   Star,
   ShoppingBag,
@@ -85,7 +80,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
         <div className="mb-6">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold tracking-wider uppercase mb-2">
             <Grid className="w-3.5 h-3.5" />
-            <span>{society?.name || 'Mahaveer Ranches'} Apps</span>
+            <span>{society?.name ?? 'Society'} Apps</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Welcome, {firstName}
@@ -110,7 +105,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
                 className={`p-4 rounded-3xl border transition-all ${
                   app.isReady
                     ? 'bg-white border-slate-200 shadow-md hover:shadow-lg hover:border-emerald-300 cursor-pointer active:scale-98 group'
-                    : 'bg-slate-100/70 border-slate-200 opacity-60 cursor-not-allowed'
+                    : 'bg-slate-100/70 border-slate-200 cursor-not-allowed'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
@@ -144,7 +139,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
 
                     {app.isReady && (
                       <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-[10px] text-slate-500 font-medium">
                           Commute Facilitation
                         </span>
                         <div className="flex items-center gap-1 text-xs font-extrabold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
@@ -163,7 +158,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
 
       {/* Footer Info */}
       <div className="pt-6 text-center">
-        <p className="text-[10px] text-slate-400 font-medium">
+        <p className="text-[10px] text-slate-500 font-medium">
           SocietyApps Platform · Version 1.0 Pilot for {society?.name}
         </p>
       </div>

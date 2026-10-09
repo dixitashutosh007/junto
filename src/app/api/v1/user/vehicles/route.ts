@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { ONBOARDING_STATUSES, requireAuth, errorResponse } from '@/lib/api-auth';
 import { Vehicle } from '@/types';
 import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { CreateVehicleSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
+  if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const vehicles = await repo.listUserVehicles(auth.societyId, auth.userId);
@@ -14,20 +16,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  // Allow ACTIVE residents and onboarding residents awaiting approval
+  const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
+  if (auth instanceof NextResponse) return auth;
 
-  // Allow ACTIVE residents and PENDING_APPROVAL onboarding residents
-  if (auth.status !== 'ACTIVE' && auth.status !== 'PENDING_APPROVAL' && auth.status !== 'REGISTERED') {
-    return errorResponse('Valid society membership required', 403);
-  }
-
-  const body = await req.json();
+  const body = await parseBody(req, CreateVehicleSchema);
+  if (body instanceof NextResponse) return body;
   const { type, make, model, color, registrationNumber, capacity, mileageKmPerLitre } = body;
-
-  if (!make || !model || !registrationNumber) {
-    return errorResponse('Missing vehicle details');
-  }
 
   // Indian standard vehicle number validation
   const regCheck = validateIndianRegistration(registrationNumber);
@@ -37,26 +32,20 @@ export async function POST(req: NextRequest) {
 
   const formattedReg = formatIndianRegistration(registrationNumber);
 
-  // Validate or default mileage (km/L)
-  let parsedMileage = 15;
-  if (mileageKmPerLitre !== undefined && mileageKmPerLitre !== null && mileageKmPerLitre !== '') {
-    const num = Number(mileageKmPerLitre);
-    if (!isNaN(num) && num >= 5 && num <= 60) {
-      parsedMileage = Math.round(num * 10) / 10;
-    }
-  }
+  // Mileage (km/L) is range-checked by the schema; default for typical Indian cars
+  const parsedMileage = mileageKmPerLitre !== undefined ? Math.round(mileageKmPerLitre * 10) / 10 : 15;
 
   const repo = getRepository();
   const vehicle: Vehicle = {
-    id: `veh-${Date.now()}`,
+    id: `veh-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     userId: auth.userId,
-    type: type || 'CAR',
+    type,
     make,
     model,
     color: color || 'White',
     registrationNumber: formattedReg,
-    capacity: capacity ? Number(capacity) : 4,
+    capacity: capacity ?? (type === 'TWO_WHEELER' ? 1 : 4),
     mileageKmPerLitre: parsedMileage,
     isActive: true,
     createdAt: new Date().toISOString(),
@@ -65,7 +54,7 @@ export async function POST(req: NextRequest) {
   const saved = await repo.createVehicle(vehicle);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'VEHICLE_REGISTERED',

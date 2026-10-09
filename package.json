@@ -1,12 +1,17 @@
 {
-  "name": "saath-app",
+  "name": "junto",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate:ride-times": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-ride-times.ts",
+    "grant-app-admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/grant-app-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1147.0",
@@ -34,5 +39,10 @@
     "typescript": "^5",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.14.6"
+    }
   }
 }

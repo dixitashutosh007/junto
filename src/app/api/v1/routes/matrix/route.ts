@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateHaversineDistanceKm, RouteCoord } from '@/lib/services/matching';
-
-interface RoutesMatrixRequest {
-  origin: RouteCoord;
-  destination: RouteCoord;
-  waypoints?: RouteCoord[];
-}
+import { calculateHaversineDistanceKm } from '@/lib/services/matching';
+import { requireAuth, serverError } from '@/lib/api-auth';
+import { rateLimit } from '@/lib/rate-limit';
+import { RoutesMatrixSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 // In-memory cache for Bangalore route durations with TTL (prevents duplicate billing)
 const routeCache = new Map<string, { durationMinutes: number; distanceKm: number; cachedAt: number }>();
@@ -18,13 +16,22 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
  * Otherwise uses calibrated Bangalore traffic model (25 km/h urban speed) with caching.
  */
 export async function POST(req: NextRequest) {
-  try {
-    const body: RoutesMatrixRequest = await req.json();
-    const { origin, destination, waypoints } = body;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-    if (!origin || !destination) {
-      return NextResponse.json({ error: 'Origin and destination are required' }, { status: 400 });
-    }
+  const limit = rateLimit(`routes:${auth.userId}`, 30, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many route calculations. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+    );
+  }
+
+  const body = await parseBody(req, RoutesMatrixSchema);
+  if (body instanceof NextResponse) return body;
+  const { origin, destination, waypoints } = body;
+
+  try {
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
       detourMinutes,
       isCompatible10MinRule: detourMinutes <= 10,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Routing calculation failed' }, { status: 500 });
+  } catch (err) {
+    return serverError('Routing calculation failed', err);
   }
 }

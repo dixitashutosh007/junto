@@ -1,16 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Building, Sparkles } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
+import React, { Suspense, use, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { useAuth } from '@/context/AuthContext';
+import { User } from '@/types';
 
-export default function JoinSocietyPage({ params }: { params: Promise<{ societyCode: string }> }) {
-  const router = useRouter();
+type JoinParams = Promise<{ societyCode: string }>;
+
+// The invite code is only known at request time, so the form renders inside Suspense
+export default function JoinSocietyPage({ params }: { params: JoinParams }) {
+  return (
+    <Suspense fallback={null}>
+      <JoinSocietyForm params={params} />
+    </Suspense>
+  );
+}
+
+function JoinSocietyForm({ params }: { params: JoinParams }) {
+  const { societyCode } = use(params);
+  const { user, isAuthenticated } = useAuth();
+
+  // Registration requires a verified mobile number (phone OTP sign-in) first
+  const [verifiedUser, setVerifiedUser] = useState<User | null>(null);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const signedInUser = verifiedUser ?? (isAuthenticated ? user : null);
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [workLocation, setWorkLocation] = useState('');
   const [gender, setGender] = useState('MALE');
@@ -39,14 +59,13 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
     setError('');
 
     try {
-      const res = await fetch('/api/v1/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          societyCode: 'GGH2024',
+          societyCode,
           fullName,
           email,
-          mobile,
           flatNumber,
           gender,
           workLocationName: workLocation,
@@ -72,12 +91,13 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-zinc-900">Join Green Glen Heights</h1>
+          <h1 className="text-lg font-bold text-zinc-900">Join your society</h1>
           <p className="text-xs text-zinc-500">Official Society Invitation</p>
         </div>
       </div>
@@ -98,6 +118,30 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
             Return to Home
           </Link>
         </div>
+      ) : !signedInUser ? (
+        <div className="my-auto text-center py-12 px-6">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+            <ShieldCheck className="w-10 h-10" />
+          </div>
+          <h2 className="text-lg font-bold text-zinc-900 mb-1">Verify your mobile number</h2>
+          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+            We&apos;ll send a one-time code by SMS. Your verified number is what co-residents see once you share a ride.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowOtpModal(true)}
+            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
+          >
+            Continue with mobile OTP
+          </button>
+          <PhoneOtpModal
+            isOpen={showOtpModal}
+            onClose={() => setShowOtpModal(false)}
+            onSuccess={(verified) => setVerifiedUser(verified)}
+            societyCode={societyCode}
+            skipReload
+          />
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-3.5">
           {error && (
@@ -107,8 +151,9 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
           )}
 
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Full Name</label>
+            <label htmlFor="full-name" className="text-xs font-semibold text-zinc-700 block mb-1">Full Name</label>
             <input
+              id="full-name"
               type="text"
               required
               value={fullName}
@@ -120,8 +165,9 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Flat / Unit Number</label>
+              <label htmlFor="flat-unit-number" className="text-xs font-semibold text-zinc-700 block mb-1">Flat / Unit Number</label>
               <input
+                id="flat-unit-number"
                 type="text"
                 required
                 value={flatNumber}
@@ -131,8 +177,9 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Gender</label>
+              <label htmlFor="gender" className="text-xs font-semibold text-zinc-700 block mb-1">Gender</label>
               <select
+                id="gender"
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
@@ -146,19 +193,16 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
 
           <div>
             <label className="text-xs font-semibold text-zinc-700 block mb-1">Mobile Number</label>
-            <input
-              type="tel"
-              required
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              placeholder="+91 98765 43210"
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
-            />
+            <div className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>{signedInUser?.mobile || 'Verified'}</span>
+            </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Email Address</label>
+            <label htmlFor="email-address" className="text-xs font-semibold text-zinc-700 block mb-1">Email Address</label>
             <input
+              id="email-address"
               type="email"
               required
               value={email}
@@ -188,7 +232,7 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 isLegalFullyAccepted
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                  : 'bg-rose-100 text-rose-800 border border-rose-300'
               }`}>
                 {isLegalFullyAccepted ? 'Accepted ✓' : 'Required'}
               </span>
@@ -212,7 +256,7 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? 'Registering...' : 'Submit Society Registration'}
             </button>
@@ -330,8 +374,8 @@ export default function JoinSocietyPage({ params }: { params: Promise<{ societyC
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
                   isLegalFullyAccepted
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
+                    : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />

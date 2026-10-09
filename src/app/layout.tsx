@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { TopBarNav } from "@/components/TopBarNav";
 import { BottomNav } from "@/components/BottomNav";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,8 +37,7 @@ export const viewport = {
   themeColor: "#059669",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays enabled for low-vision users (WCAG 1.4.4)
 };
 
 export default function RootLayout({
@@ -48,6 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-100 min-h-screen text-slate-900 selection:bg-emerald-100 selection:text-emerald-900`}>
+        <ServiceWorkerRegistration />
         <AuthProvider>
           <div className="max-w-md mx-auto min-h-screen bg-slate-50 md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-3xl shadow-2xl shadow-slate-300/60 border border-slate-200/70 flex flex-col justify-between overflow-hidden">
             <TopBarNav />

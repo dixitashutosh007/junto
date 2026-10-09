@@ -12,6 +12,7 @@ import {
   AuditEvent,
   InAppNotification,
 } from '@/types';
+import { BookingResult, RideCancellationResult } from '@/lib/services/seat-booking';
 
 /**
  * SocietyApps Multi-Tenant Repository Interface
@@ -33,10 +34,13 @@ export interface ISocietyRepository {
   getUserById(userId: string): Promise<User | null>;
   getUserByEmail(email: string): Promise<User | null>;
   getUserByPhone(mobile: string): Promise<User | null>;
+  getUserByFirebaseUid(firebaseUid: string): Promise<User | null>;
   createUser(user: User): Promise<User>;
   updateUser(userId: string, updates: Partial<User>): Promise<User>;
 
   getMembership(societyId: string, userId: string): Promise<SocietyMembership | null>;
+  /** Every society membership the user holds, in any status */
+  listUserMemberships(userId: string): Promise<SocietyMembership[]>;
   createMembership(membership: SocietyMembership): Promise<SocietyMembership>;
   updateMembership(
     societyId: string,
@@ -72,40 +76,39 @@ export interface ISocietyRepository {
     direction?: RideOccurrence['direction']
   ): Promise<RideOccurrence[]>;
   listUserRides(societyId: string, userId: string): Promise<RideOccurrence[]>;
-  cancelRideOccurrence(
-    societyId: string,
-    journeyId: string,
-    userId: string,
-    reason: string
-  ): Promise<RideOccurrence>;
   updateRideOccurrence(
     societyId: string,
     journeyId: string,
     userId: string,
     updates: Partial<RideOccurrence>
   ): Promise<RideOccurrence>;
-  deleteRideOccurrence(
+  /** Cancels the ride and all its pending or accepted requests atomically */
+  cancelRideWithRequests(
     societyId: string,
     journeyId: string,
-    userId: string
-  ): Promise<void>;
-  updateAvailableSeats(
-    societyId: string,
-    journeyId: string,
-    seatDelta: number
-  ): Promise<RideOccurrence>;
+    offererUserId: string,
+    reason: string
+  ): Promise<RideCancellationResult>;
 
   // Ride Requests
   createRideRequest(request: RideRequest): Promise<RideRequest>;
   getRideRequest(societyId: string, requestId: string): Promise<RideRequest | null>;
   listJourneyRequests(societyId: string, journeyId: string): Promise<RideRequest[]>;
   listUserRequests(societyId: string, userId: string): Promise<RideRequest[]>;
-  updateRequestStatus(
+  /** Offerer accepts a request; seat check and decrement are atomic */
+  acceptRideRequest(
     societyId: string,
     requestId: string,
-    status: RideRequest['status'],
+    offererUserId: string,
     note?: string
-  ): Promise<RideRequest>;
+  ): Promise<BookingResult>;
+  /** Offerer rejects or seeker cancels a request, releasing any held seats atomically */
+  closeRideRequest(
+    societyId: string,
+    requestId: string,
+    actor: { userId: string; as: 'OFFERER' | 'SEEKER' },
+    note?: string
+  ): Promise<BookingResult>;
 
   // Matches
   saveMatch(match: CommuteMatch): Promise<CommuteMatch>;
@@ -122,7 +125,7 @@ export interface ISocietyRepository {
     status: ModerationReport['status'],
     resolutionNotes?: string,
     adminUserId?: string
-  ): Promise<ModerationReport>;
+  ): Promise<ModerationReport | null>;
 
   // Auditing
   recordAuditEvent(event: AuditEvent): Promise<void>;
@@ -131,6 +134,7 @@ export interface ISocietyRepository {
   // In-App & Push Notifications
   createNotification(notification: InAppNotification): Promise<InAppNotification>;
   listUserNotifications(societyId: string, userId: string): Promise<InAppNotification[]>;
-  markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<void>;
+  /** Returns false when the notification does not exist or belongs to someone else */
+  markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<boolean>;
   markAllNotificationsAsRead(societyId: string, userId: string): Promise<void>;
 }

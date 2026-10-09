@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-client';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import {
@@ -22,17 +23,10 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/v1/notifications', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);
@@ -40,25 +34,25 @@ export function NotificationBell() {
       }
     } catch (e) {
       console.error('Failed to load notifications', e);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // Poll every 15s for new activity
-    return () => clearInterval(interval);
-  }, [activePersona]);
+    // Poll every 15s for new activity; the first load runs right away
+    const timeout = setTimeout(fetchNotifications, 0);
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [fetchNotifications, activePersona]);
 
   const markAllRead = async () => {
     try {
-      await fetch('/api/v1/notifications', {
+      await apiFetch('/api/v1/notifications', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({ markAll: true }),
       });
@@ -129,7 +123,7 @@ export function NotificationBell() {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                  className="p-1 rounded-lg text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -144,7 +138,7 @@ export function NotificationBell() {
                 </span>
                 <button
                   onClick={requestPermission}
-                  className="px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700"
+                  className="px-2 py-1 bg-emerald-700 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-800"
                 >
                   Enable Push
                 </button>
@@ -154,10 +148,10 @@ export function NotificationBell() {
             {/* List */}
             <div className="overflow-y-auto divide-y divide-zinc-100 p-2 space-y-1">
               {notifications.length === 0 ? (
-                <div className="text-center py-10 px-4 text-zinc-400">
+                <div className="text-center py-10 px-4 text-zinc-500">
                   <Bell className="w-8 h-8 mx-auto mb-2 text-zinc-300 stroke-[1.5]" />
                   <p className="text-xs font-semibold text-zinc-600">All caught up!</p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
                     Ride requests, match notifications, and confirmations will show up here.
                   </p>
                 </div>
@@ -178,10 +172,11 @@ export function NotificationBell() {
                           <p className="text-xs font-bold text-zinc-900 truncate">
                             {notif.title}
                           </p>
-                          <span className="text-[9px] text-zinc-400">
-                            {new Date(notif.createdAt).toLocaleTimeString([], {
+                          <span className="text-[9px] text-zinc-500">
+                            {new Date(notif.createdAt).toLocaleTimeString('en-IN', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              timeZone: 'Asia/Kolkata',
                             })}
                           </span>
                         </div>

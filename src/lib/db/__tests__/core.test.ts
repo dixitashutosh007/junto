@@ -219,12 +219,20 @@ describe('SocietyApps V1 Core Test Suite', () => {
       const acceptedView = formatPublicJourneyView(sampleJourney, sampleUser, sampleVehicle, {
         isOfferer: false,
         seekerRequestStatus: 'ACCEPTED',
+        offererFlatNumber: 'Tower B-804',
       });
 
       expect(acceptedView.offerer.displayName).toBe('Ashutosh Dixit');
       expect(acceptedView.offerer.mobile).toBe('+919811122233');
       expect(acceptedView.offerer.flatNumber).toBe('Tower B-804');
       expect(acceptedView.vehicle.registrationNumber).toBe('KA-04-MM-8921');
+
+      // A missing flat number is never replaced with a made-up one
+      const noFlatView = formatPublicJourneyView(sampleJourney, sampleUser, sampleVehicle, {
+        isOfferer: false,
+        seekerRequestStatus: 'ACCEPTED',
+      });
+      expect(noFlatView.offerer.flatNumber).toBeUndefined();
     });
   });
 
@@ -305,8 +313,8 @@ describe('SocietyApps V1 Core Test Suite', () => {
         'usr-admin-001'
       );
 
-      expect(resolved.status).toBe('RESOLVED');
-      expect(resolved.resolutionNotes).toBe('Discussed with resident; settled mutually');
+      expect(resolved?.status).toBe('RESOLVED');
+      expect(resolved?.resolutionNotes).toBe('Discussed with resident; settled mutually');
     });
   });
 
@@ -393,12 +401,23 @@ describe('SocietyApps V1 Core Test Suite', () => {
       const validRide = CreateRideSchema.safeParse({
         vehicleId: 'veh-1',
         journeyDate: '2026-10-09',
-        departureWindowStart: '08:00',
-        departureWindowEnd: '08:20',
+        departureWindowStart: '2026-10-09T08:00:00+05:30',
+        departureWindowEnd: '2026-10-09T08:20:00+05:30',
         destinationName: 'Manyata Tech Park',
+        destinationLat: 13.0453,
+        destinationLng: 77.6206,
         totalSeats: 2,
       });
       expect(validRide.success).toBe(true);
+
+      // A destination without coordinates is rejected rather than guessed
+      const noCoordinates = CreateRideSchema.safeParse({
+        vehicleId: 'veh-1',
+        journeyDate: '2026-10-09',
+        departureWindowStart: '2026-10-09T08:00:00+05:30',
+        destinationName: 'Manyata Tech Park',
+      });
+      expect(noCoordinates.success).toBe(false);
 
       // Feedback rejects 1-5 star ratings and requires valid enum outcome
       const validFeedback = FeedbackSchema.safeParse({

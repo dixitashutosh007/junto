@@ -1,7 +1,8 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, X, Loader2 } from 'lucide-react';
 import { PlaceSuggestion } from '@/lib/services/places-data';
 
 interface PlacesAutocompleteInputProps {
@@ -19,15 +20,10 @@ export function PlacesAutocompleteInput({
   label = 'Destination Hub',
   required = false,
 }: PlacesAutocompleteInputProps) {
-  const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setQuery(value);
-  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -42,7 +38,7 @@ export function PlacesAutocompleteInput({
   const fetchSuggestions = async (searchQuery: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/v1/places/autocomplete?q=${encodeURIComponent(searchQuery)}`);
+      const res = await apiFetch(`/api/v1/places/autocomplete?q=${encodeURIComponent(searchQuery)}`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data.suggestions || []);
@@ -57,7 +53,6 @@ export function PlacesAutocompleteInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setQuery(val);
     onChange(val);
     if (val.trim().length > 1) {
       fetchSuggestions(val);
@@ -68,7 +63,6 @@ export function PlacesAutocompleteInput({
   };
 
   const handleSelectSuggestion = async (item: PlaceSuggestion) => {
-    setQuery(item.primaryText);
     setIsOpen(false);
 
     // If item already has non-default coordinates, return immediately
@@ -79,7 +73,7 @@ export function PlacesAutocompleteInput({
 
     // Resolve exact geocode details
     try {
-      const res = await fetch(`/api/v1/places/autocomplete?placeId=${encodeURIComponent(item.placeId)}`);
+      const res = await apiFetch(`/api/v1/places/autocomplete?placeId=${encodeURIComponent(item.placeId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.location) {
@@ -96,11 +90,11 @@ export function PlacesAutocompleteInput({
       console.warn('Place details resolution error', e);
     }
 
-    onChange(item.primaryText, item);
+    // Coordinates unknown: pass the text only so forms ask for another pick
+    onChange(item.primaryText);
   };
 
   const handleClear = () => {
-    setQuery('');
     onChange('');
     setSuggestions([]);
     setIsOpen(false);
@@ -111,17 +105,17 @@ export function PlacesAutocompleteInput({
       {label && <label className="text-xs font-semibold text-zinc-700 block">{label}</label>}
 
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
           <MapPin className="w-4 h-4 text-emerald-600" />
         </div>
 
         <input
           type="text"
           required={required}
-          value={query}
+          value={value}
           onFocus={() => {
             if (suggestions.length > 0) setIsOpen(true);
-            else fetchSuggestions(query);
+            else fetchSuggestions(value);
           }}
           onChange={handleInputChange}
           placeholder={placeholder}
@@ -129,12 +123,13 @@ export function PlacesAutocompleteInput({
         />
 
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />}
-          {query && (
+          {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" />}
+          {value && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+              aria-label="Clear location"
+              className="p-1 rounded-md text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -145,7 +140,7 @@ export function PlacesAutocompleteInput({
       {/* Autocomplete Dropdown */}
       {isOpen && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg text-xs">
-          <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
             Suggested Tech Parks & Hubs
           </div>
           {suggestions.map((item) => (

@@ -1,33 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
-import { MembershipRole } from '@/types';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
+import { UpdateRbacSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
+import { SocietyMembership } from '@/types';
 
 // App Admin endpoint to view and update RBAC roles and granular permissions
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  
   // App Admin (SUPER_ADMIN) is required to manage RBAC
-  if (auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Platform App Admin role required for RBAC control', 403);
-  }
+  const auth = await requireAuth(req, { roles: ['SUPER_ADMIN'] });
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, UpdateRbacSchema);
+  if (body instanceof NextResponse) return body;
   const { targetUserId, targetSocietyId, role, permissions } = body;
 
-  if (!targetUserId || !role) {
-    return errorResponse('Missing targetUserId or role');
+  if (targetUserId === auth.userId) {
+    return errorResponse('You cannot change your own role', 403);
   }
 
   const societyId = targetSocietyId || auth.societyId;
   const repo = getRepository();
 
-  const updates: any = {
-    role: role as MembershipRole,
-  };
+  if (!(await repo.getSocietyById(societyId))) return errorResponse('Society not found', 404);
 
-  if (permissions) {
+  const target = await repo.getMembership(societyId, targetUserId);
+  if (!target) return errorResponse('Member not found in this society', 404);
+  if (target.role === 'SUPER_ADMIN') {
+    return errorResponse('Platform admins cannot be changed here', 403);
+  }
+
+  const updates: Partial<SocietyMembership> = { role };
+  if (role === 'SOCIETY_ADMIN' && permissions) {
     updates.permissions = {
       canApproveResidents: Boolean(permissions.canApproveResidents),
       canManageSettings: Boolean(permissions.canManageSettings),
@@ -39,7 +43,7 @@ export async function PUT(req: NextRequest) {
   const updated = await repo.updateMembership(societyId, targetUserId, updates);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId,
     actorUserId: auth.userId,
     action: 'RBAC_ROLE_PERMISSIONS_UPDATED',

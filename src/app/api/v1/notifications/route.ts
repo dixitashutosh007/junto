@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth, errorResponse } from '@/lib/api-auth';
+import { MarkNotificationsSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 // GET all notifications for the active resident
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const notifications = await repo.listUserNotifications(auth.societyId, auth.userId);
@@ -16,23 +18,20 @@ export async function GET(req: NextRequest) {
 
 // Mark notifications as read
 export async function PATCH(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json().catch(() => ({}));
-  const { notificationId, markAll } = body;
+  const body = await parseBody(req, MarkNotificationsSchema);
+  if (body instanceof NextResponse) return body;
 
   const repo = getRepository();
 
-  if (markAll) {
+  if ('markAll' in body) {
     await repo.markAllNotificationsAsRead(auth.societyId, auth.userId);
     return NextResponse.json({ success: true, markedAll: true });
   }
 
-  if (notificationId) {
-    await repo.markNotificationAsRead(auth.societyId, notificationId, auth.userId);
-    return NextResponse.json({ success: true, notificationId });
-  }
-
-  return errorResponse('Provide either notificationId or markAll');
+  const marked = await repo.markNotificationAsRead(auth.societyId, body.notificationId, auth.userId);
+  if (!marked) return errorResponse('Notification not found', 404);
+  return NextResponse.json({ success: true, notificationId: body.notificationId });
 }

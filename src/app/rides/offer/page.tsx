@@ -1,24 +1,34 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
+import { useIsClient } from '@/hooks/useIsClient';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Car, Clock, MapPin, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MapPin, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Vehicle } from '@/types';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import { PlaceSuggestion } from '@/lib/services/places-data';
+import { istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
-  const { user, activePersona } = useAuth();
+  const { activePersona, society } = useAuth();
   const router = useRouter();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [journeyDate, setJourneyDate] = useState('');
-  const [minDate, setMinDate] = useState('');
-  const [maxDate, setMaxDate] = useState('');
-  const [next7Days, setNext7Days] = useState<{ dateStr: string; label: string; weekday: string }[]>([]);
-  const [destinationName, setDestinationName] = useState('Manyata Tech Park, Hebbal');
+  // Day chips depend on today's date in India, so they're built in the browser
+  const isClient = useIsClient();
+  const next7Days = isClient ? upcomingIstDays(7) : [];
+  const minDate = next7Days[0]?.dateStr ?? '';
+  const maxDate = next7Days[next7Days.length - 1]?.dateStr ?? '';
+  const [pickedDate, setJourneyDate] = useState('');
+  // Defaults to tomorrow until the offerer picks a day
+  const journeyDate = pickedDate || next7Days[1]?.dateStr || '';
+  const [destinationName, setDestinationName] = useState('');
+  const [destinationPlace, setDestinationPlace] = useState<PlaceSuggestion | null>(null);
+  const [formError, setFormError] = useState('');
   const [timeWindowStart, setTimeWindowStart] = useState('08:00');
   const [timeWindowEnd, setTimeWindowEnd] = useState('08:20');
   const [seats, setSeats] = useState(2);
@@ -27,38 +37,8 @@ export default function OfferRidePage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    setMinDate(todayStr);
-
-    const maxD = new Date();
-    maxD.setDate(maxD.getDate() + 7);
-    setMaxDate(maxD.toISOString().split('T')[0]);
-
-    // Build next 7 days list
-    const daysList = [];
-    for (let i = 0; i <= 7; i++) {
-      const day = new Date();
-      day.setDate(today.getDate() + i);
-      const dateStr = day.toISOString().split('T')[0];
-      const weekday = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : day.toLocaleDateString([], { weekday: 'short' });
-      const label = day.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      daysList.push({ dateStr, label, weekday });
-    }
-    setNext7Days(daysList);
-
-    // Default to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-    setJourneyDate(tomorrow.toISOString().split('T')[0]);
-
     async function loadVehicles() {
-      const res = await fetch('/api/v1/user/vehicles', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/user/vehicles');
       if (res.ok) {
         const data = await res.json();
         setVehicles(data.vehicles || []);
@@ -73,28 +53,44 @@ export default function OfferRidePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicleId) return;
+    setFormError('');
+
+    if (!destinationPlace) {
+      setFormError('Please choose your destination from the suggestions list.');
+      return;
+    }
+    if (timeWindowEnd < timeWindowStart) {
+      setFormError('The departure window must end after it starts.');
+      return;
+    }
 
     setIsSubmitting(true);
-    const dateStr = journeyDate || new Date().toISOString().split('T')[0];
+    const dateStr = journeyDate || next7Days[0]?.dateStr;
 
     try {
-      const res = await fetch('/api/v1/rides', {
+      const res = await apiFetch('/api/v1/rides', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           vehicleId: selectedVehicleId,
           journeyDate: dateStr,
           destinationName,
-          departureWindowStart: `${dateStr}T${timeWindowStart}:00.000Z`,
-          departureWindowEnd: `${dateStr}T${timeWindowEnd}:00.000Z`,
+          destinationPlaceId: destinationPlace.placeId,
+          destinationLat: destinationPlace.lat,
+          destinationLng: destinationPlace.lng,
+          departureWindowStart: istDateTime(dateStr, timeWindowStart),
+          departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
+          totalSeats: seats,
+          genderPreference: genderPref,
         }),
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || 'Could not offer this ride. Please try again.');
+      } else {
         setSuccess(true);
         setTimeout(() => {
           router.push('/');
@@ -113,9 +109,10 @@ export default function OfferRidePage() {
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Offer a Ride</h1>
@@ -142,7 +139,7 @@ export default function OfferRidePage() {
             </label>
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
               <MapPin className="w-4 h-4 text-emerald-600" />
-              <span>Mahaveer Ranches (Main Clubhouse Gate)</span>
+              <span>{society?.name ?? 'Your society'}</span>
             </div>
           </div>
 
@@ -150,7 +147,7 @@ export default function OfferRidePage() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-zinc-700">Select Date (Next 7 Days)</label>
-              <span className="text-[10px] text-zinc-400">Up to 7 days ahead</span>
+              <span className="text-[10px] text-zinc-500">Up to 7 days ahead</span>
             </div>
 
             {/* Quick 7-Day Pills */}
@@ -164,7 +161,7 @@ export default function OfferRidePage() {
                     onClick={() => setJourneyDate(d.dateStr)}
                     className={`flex flex-col items-center justify-center min-w-[70px] px-2.5 py-2 rounded-xl border text-center transition-all shrink-0 ${
                       isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-600/30'
+                        ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-600/30'
                         : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300'
                     }`}
                   >
@@ -177,6 +174,7 @@ export default function OfferRidePage() {
 
             <div className="pt-1">
               <input
+                aria-label="Journey date"
                 type="date"
                 required
                 value={journeyDate}
@@ -191,7 +189,10 @@ export default function OfferRidePage() {
           {/* Destination */}
           <PlacesAutocompleteInput
             value={destinationName}
-            onChange={(val) => setDestinationName(val)}
+            onChange={(val, suggestion) => {
+              setDestinationName(val);
+              setDestinationPlace(suggestion ?? null);
+            }}
             placeholder="Search Tech Park, IT corridor, or hub..."
             label="Destination (Workplace / Hub)"
             required
@@ -202,8 +203,9 @@ export default function OfferRidePage() {
             <label className="text-xs font-semibold text-zinc-700">Departure Window</label>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-[10px] text-zinc-400 block mb-0.5">Earliest</span>
+                <label htmlFor="time-earliest" className="text-[10px] text-zinc-500 block mb-0.5">Earliest</label>
                 <input
+                  id="time-earliest"
                   type="time"
                   value={timeWindowStart}
                   onChange={(e) => setTimeWindowStart(e.target.value)}
@@ -211,8 +213,9 @@ export default function OfferRidePage() {
                 />
               </div>
               <div>
-                <span className="text-[10px] text-zinc-400 block mb-0.5">Latest</span>
+                <label htmlFor="time-latest" className="text-[10px] text-zinc-500 block mb-0.5">Latest</label>
                 <input
+                  id="time-latest"
                   type="time"
                   value={timeWindowEnd}
                   onChange={(e) => setTimeWindowEnd(e.target.value)}
@@ -225,8 +228,9 @@ export default function OfferRidePage() {
           {/* Seats & Vehicle */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
+              <label htmlFor="available-seats" className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
               <select
+                id="available-seats"
                 value={seats}
                 onChange={(e) => setSeats(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -238,8 +242,9 @@ export default function OfferRidePage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Gender Preference</label>
+              <label htmlFor="gender-preference" className="text-xs font-semibold text-zinc-700 block mb-1">Gender Preference</label>
               <select
+                id="gender-preference"
                 value={genderPref}
                 onChange={(e) => setGenderPref(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -253,9 +258,10 @@ export default function OfferRidePage() {
 
           {/* Vehicle Selector */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-700">Vehicle</label>
+            <label htmlFor="vehicle" className="text-xs font-semibold text-zinc-700">Vehicle</label>
             {vehicles.length > 0 ? (
               <select
+                id="vehicle"
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -276,19 +282,25 @@ export default function OfferRidePage() {
                 <span>⛽ Fuel Sharing Advisory</span>
               </div>
               <p className="text-[10px] text-emerald-800 leading-relaxed">
-                Junto estimates fair fuel points based on your vehicle's fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
+                Junto estimates fair fuel points based on your vehicle&apos;s fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
               </p>
             </div>
-            <p className="text-[10px] text-zinc-400">
+            <p className="text-[10px] text-zinc-500">
               Registration number is masked until you accept a ride request.
             </p>
           </div>
+
+          {formError && (
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+              {formError}
+            </div>
+          )}
 
           <div className="mt-auto pt-4">
             <button
               type="submit"
               disabled={isSubmitting || !selectedVehicleId}
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-700 disabled:opacity-50 shadow-md shadow-emerald-600/20"
+              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 shadow-md shadow-emerald-600/20"
             >
               {isSubmitting ? 'Publishing Ride...' : 'Publish Ride Offer'}
             </button>

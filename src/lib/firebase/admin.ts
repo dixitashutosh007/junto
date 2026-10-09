@@ -26,6 +26,9 @@ if (!getApps().length) {
         projectId: serviceAccount.project_id || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       });
     } catch (e) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is set but is not valid service account JSON');
+      }
       console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON, using default app', e);
       app = initializeApp({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'saath-societyapps',
@@ -38,6 +41,13 @@ if (!getApps().length) {
   }
 } else {
   app = getApps()[0];
+}
+
+/** True when server credentials for Firestore are configured */
+export function hasFirebaseCredentials(): boolean {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT_KEY_B64
+  );
 }
 
 export const adminDb: Firestore = getFirestore(app);

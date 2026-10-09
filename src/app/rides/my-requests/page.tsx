@@ -1,6 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-client';
+import { Loading, LoadError } from '@/components/ui/LoadState';
+import { ConfirmDialog } from '@/components/ui/Dialog';
+import React, { useState } from 'react';
+import { useApiData } from '@/hooks/useApiData';
+import { RideOccurrence, RideRequest } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
   Search,
@@ -10,50 +15,40 @@ import {
   XCircle,
   Phone,
   Home,
-  CheckCircle2,
-  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
+type MyRequest = RideRequest & {
+  journey: RideOccurrence | null;
+  offererName: string;
+  offererMobile?: string;
+  offererFlat?: string;
+  vehicleName: string;
+  vehiclePlate?: string;
+};
+
 export default function MyRequestsPage() {
   const { activePersona } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const {
+    data,
+    loading,
+    error: loadError,
+    reload: loadRequests,
+  } = useApiData(
+    '/api/v1/rides/requests',
+    (json) => (json as { requests: MyRequest[] }).requests ?? [],
+    'Could not load your requests.',
+    activePersona
+  );
+  const requests = data ?? [];
 
-  const loadRequests = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/v1/rides/requests', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data.requests || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, [activePersona]);
+  const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
 
   const handleCancelRequest = async (requestId: string) => {
-    if (!confirm('Are you sure you want to cancel this ride request?')) return;
     try {
-      const res = await fetch(`/api/v1/rides/requests?requestId=${requestId}`, {
+      const res = await apiFetch(`/api/v1/rides/requests?requestId=${requestId}`, {
         method: 'DELETE',
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
       });
       if (res.ok) {
         setMessage('Seat request cancelled successfully.');
@@ -71,9 +66,10 @@ export default function MyRequestsPage() {
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">My Ride Requests</h1>
@@ -88,7 +84,9 @@ export default function MyRequestsPage() {
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-zinc-400">Loading your requests...</div>
+        <Loading label="Loading your requests…" />
+      ) : loadError ? (
+        <LoadError message={loadError} onRetry={loadRequests} />
       ) : requests.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
@@ -108,7 +106,6 @@ export default function MyRequestsPage() {
           {requests.map((req) => {
             const isAccepted = req.status === 'ACCEPTED';
             const isCancelled = req.status === 'CANCELLED';
-            const isPending = req.status === 'REQUESTED';
 
             return (
               <div
@@ -142,7 +139,7 @@ export default function MyRequestsPage() {
                     <span>Dropoff: {req.dropoffName}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-zinc-500">
-                    <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                    <Clock className="w-3.5 h-3.5 text-zinc-500" />
                     <span>Pickup: {req.pickupName}</span>
                   </div>
                 </div>
@@ -175,9 +172,27 @@ export default function MyRequestsPage() {
 
                 {/* Actions */}
                 {!isCancelled && (
-                  <div className="pt-1 flex items-center justify-end">
+                  <div className="pt-1 flex items-center justify-between">
+                    {isAccepted && req.journey ? (
+                      <div className="flex gap-3 text-xs">
+                        <Link
+                          href={`/feedback?journeyId=${req.journeyId}&toUserId=${req.journey.offererUserId}&name=${encodeURIComponent(req.offererName)}`}
+                          className="font-semibold text-emerald-700 underline"
+                        >
+                          Rate driver
+                        </Link>
+                        <Link
+                          href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
+                          className="font-semibold text-zinc-500 underline"
+                        >
+                          Report
+                        </Link>
+                      </div>
+                    ) : (
+                      <span />
+                    )}
                     <button
-                      onClick={() => handleCancelRequest(req.id)}
+                      onClick={() => setConfirmCancelRequestId(req.id)}
                       className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -190,6 +205,20 @@ export default function MyRequestsPage() {
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmCancelRequestId !== null}
+        title="Cancel this request?"
+        description="If the driver already accepted, your seat is released and they are notified."
+        confirmLabel="Cancel request"
+        cancelLabel="Keep request"
+        destructive
+        onCancel={() => setConfirmCancelRequestId(null)}
+        onConfirm={() => {
+          const id = confirmCancelRequestId;
+          setConfirmCancelRequestId(null);
+          if (id) void handleCancelRequest(id);
+        }}
+      />
     </div>
   );
 }

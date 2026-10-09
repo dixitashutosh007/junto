@@ -1,303 +1,118 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import {
-  User as UserIcon,
-  Mail,
-  Phone,
-  Home,
-  Car,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Building2,
-  Save,
-  ArrowLeft,
-  Plus,
-  ShieldCheck,
-  Check,
-  XCircle,
-  Loader2,
-  Clock,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Vehicle } from '@/types';
+import { AlertCircle, ArrowLeft, Car, Check, CheckCircle2, Clock, Loader2, Repeat, Save, Search } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
-import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { Society, SocietyMembership, User, Vehicle } from '@/types';
+import { EmailChangeDialog } from './_components/EmailChangeDialog';
+import { PhoneChangeDialog } from './_components/PhoneChangeDialog';
+import { VehiclesSection } from './_components/VehiclesSection';
+
+type CommuteIntent = 'OFFERER' | 'SEEKER' | 'BOTH';
+type StatusMessage = { type: 'success' | 'error'; text: string } | null;
+
+const COMMUTE_OPTIONS: { value: CommuteIntent; label: string; icon: typeof Search }[] = [
+  { value: 'SEEKER', label: 'Find rides', icon: Search },
+  { value: 'OFFERER', label: 'Offer rides', icon: Car },
+  { value: 'BOTH', label: 'Both', icon: Repeat },
+];
 
 export default function ProfilePage() {
-  const { user, membership, society, refreshAuth, activePersona } = useAuth();
+  const { user, membership, society, refreshAuth } = useAuth();
 
-  const [fullName, setFullName] = useState(user?.fullName || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [flatNumber, setFlatNumber] = useState(membership?.flatNumber || '');
-  const [commuteIntent, setCommuteIntent] = useState<'OFFERER' | 'SEEKER'>(
-    user?.commuteIntent === 'OFFERER' ? 'OFFERER' : 'SEEKER'
+  if (!user) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-10 text-xs text-slate-500 gap-2" role="status">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Loading your profile…
+      </div>
+    );
+  }
+
+  // The form starts from the loaded profile; remount only for a different user
+  return (
+    <ProfileForm
+      key={user.id}
+      user={user}
+      membership={membership}
+      society={society}
+      refreshAuth={refreshAuth}
+    />
   );
-  const [workLocation, setWorkLocation] = useState(user?.workLocationName || '');
-  const [gender, setGender] = useState(user?.gender || 'PREFER_NOT_TO_SAY');
+}
 
-  // Vehicles
+interface ProfileFormProps {
+  user: User;
+  membership: SocietyMembership | null;
+  society: Society | null;
+  refreshAuth: () => Promise<void>;
+}
+
+function ProfileForm({ user, membership, society, refreshAuth }: ProfileFormProps) {
+  const [fullName, setFullName] = useState(user.fullName);
+  const [flatNumber, setFlatNumber] = useState(membership?.flatNumber ?? '');
+  const [commuteIntent, setCommuteIntent] = useState<CommuteIntent>(user.commuteIntent ?? 'SEEKER');
+  const [workLocation, setWorkLocation] = useState(user.workLocationName ?? '');
+  const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(
+    user.workLatitude !== undefined && user.workLongitude !== undefined
+      ? { lat: user.workLatitude, lng: user.workLongitude }
+      : null
+  );
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [newVehType, setNewVehType] = useState<'CAR' | 'TWO_WHEELER'>('CAR');
-  const [newMake, setNewMake] = useState('');
-  const [newModel, setNewModel] = useState('');
-  const [newColor, setNewColor] = useState('White');
-  const [newReg, setNewReg] = useState('');
-  const [newCapacity, setNewCapacity] = useState(3);
-  const [newMileage, setNewMileage] = useState('15');
-
   const [saving, setSaving] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
+  const [dialog, setDialog] = useState<'PHONE' | 'EMAIL' | null>(null);
 
-  // Phone Change Verification State
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
-  const [newPhoneInput, setNewPhoneInput] = useState('');
-  const [phoneOtpStep, setPhoneOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
-  const [phoneOtpCode, setPhoneOtpCode] = useState('');
-  const [verifyingPhone, setVerifyingPhone] = useState(false);
+  const notify = useCallback((type: 'success' | 'error', text: string) => setStatusMessage({ type, text }), []);
 
-  // Email Change Verification State
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [newEmailInput, setNewEmailInput] = useState('');
-  const [emailOtpStep, setEmailOtpStep] = useState<'INPUT' | 'OTP'>('INPUT');
-  const [emailOtpCode, setEmailOtpCode] = useState('');
-  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const loadVehicles = useCallback(async () => {
+    const res = await apiFetch('/api/v1/user/vehicles');
+    if (res.ok) setVehicles((await res.json()).vehicles ?? []);
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      setFullName(user.fullName || '');
-      setEmail(user.email || '');
-      setWorkLocation(user.workLocationName || '');
-      setGender(user.gender || 'PREFER_NOT_TO_SAY');
-      if (user.commuteIntent === 'OFFERER' || user.commuteIntent === 'SEEKER') {
-        setCommuteIntent(user.commuteIntent);
-      }
-    }
-    if (membership) {
-      setFlatNumber(membership.flatNumber || '');
-    }
-  }, [user, membership]);
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void loadVehicles();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadVehicles]);
 
-  // Load vehicles
-  const loadVehicles = async () => {
-    try {
-      const res = await fetch('/api/v1/user/vehicles', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setVehicles(data.vehicles || []);
-      }
-    } catch (e) {
-      console.error('Error fetching vehicles', e);
-    }
-  };
-
-  useEffect(() => {
-    loadVehicles();
-  }, [activePersona]);
-
-  // Save profile updates
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
 
-    // Requirement 3: A user cannot be an Offerer till they have given vehicle details
-    if (commuteIntent === 'OFFERER' && vehicles.length === 0 && !newReg) {
-      setStatusMessage({
-        type: 'error',
-        text: 'You cannot set your role as Ride Offerer without registering a vehicle (2-wheeler or 4-wheeler).',
-      });
+    // Offering rides needs a registered vehicle
+    if (commuteIntent !== 'SEEKER' && vehicles.length === 0) {
+      notify('error', 'Add a vehicle below before choosing to offer rides.');
       return;
     }
 
+    setSaving(true);
     try {
-      setSaving(true);
-      const res = await fetch('/api/v1/auth/me', {
+      const res = await apiFetch('/api/v1/auth/me', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-        body: JSON.stringify({
+        json: {
           fullName,
-          email,
           flatNumber,
           commuteIntent,
           workLocationName: workLocation,
-          gender,
-        }),
+          workLatitude: workCoords?.lat,
+          workLongitude: workCoords?.lng,
+        },
       });
-
       if (res.ok) {
-        setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
+        notify('success', 'Profile updated successfully!');
         await refreshAuth();
       } else {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update profile');
+        notify('error', await apiErrorMessage(res, 'Failed to update profile'));
       }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error updating profile' });
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Add vehicle
-  const handleAddVehicle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMake || !newModel || !newReg) return;
-
-    const regCheck = validateIndianRegistration(newReg);
-    if (!regCheck.isValid) {
-      setStatusMessage({
-        type: 'error',
-        text: regCheck.error || 'Please enter a valid Indian vehicle number (e.g. KA-04-MB-1234 or 22-BH-1234-AA)',
-      });
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/v1/user/vehicles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-        body: JSON.stringify({
-          type: newVehType,
-          make: newMake,
-          model: newModel,
-          color: newColor,
-          registrationNumber: newReg.toUpperCase(),
-          capacity: newVehType === 'TWO_WHEELER' ? 1 : Number(newCapacity),
-          mileageKmPerLitre: newMileage ? Number(newMileage) : 15,
-        }),
-      });
-
-      if (res.ok) {
-        setShowAddVehicle(false);
-        setNewMake('');
-        setNewModel('');
-        setNewReg('');
-        await loadVehicles();
-        setStatusMessage({ type: 'success', text: 'Vehicle registered successfully!' });
-      } else {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to add vehicle');
-      }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error saving vehicle' });
-    }
-  };
-
-  // Verified Phone Change Handler
-  const handleSendPhoneOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPhoneInput.trim() || newPhoneInput.length < 10) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid 10-digit mobile number' });
-      return;
-    }
-    setPhoneOtpStep('OTP');
-    setStatusMessage({ type: 'success', text: `Verification code sent to ${newPhoneInput}` });
-  };
-
-  const handleConfirmPhoneChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneOtpCode.trim() || phoneOtpCode.length < 4) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid OTP code' });
-      return;
-    }
-
-    try {
-      setVerifyingPhone(true);
-      const formattedPhone = newPhoneInput.startsWith('+91') ? newPhoneInput : `+91 ${newPhoneInput.replace(/^\+91/, '').trim()}`;
-      const res = await fetch('/api/v1/auth/me', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-        body: JSON.stringify({
-          mobile: formattedPhone,
-        }),
-      });
-
-      if (res.ok) {
-        setShowPhoneModal(false);
-        setPhoneOtpStep('INPUT');
-        setPhoneOtpCode('');
-        setNewPhoneInput('');
-        await refreshAuth();
-        setStatusMessage({ type: 'success', text: 'Mobile number verified and updated successfully!' });
-      } else {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update phone number');
-      }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error verifying phone number' });
-    } finally {
-      setVerifyingPhone(false);
-    }
-  };
-
-  // Verified Email Change Handler
-  const handleSendEmailOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEmailInput.trim() || !newEmailInput.includes('@')) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid email address' });
-      return;
-    }
-    setEmailOtpStep('OTP');
-    setStatusMessage({ type: 'success', text: `Verification code sent to ${newEmailInput}` });
-  };
-
-  const handleConfirmEmailChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOtpCode.trim() || emailOtpCode.length < 4) {
-      setStatusMessage({ type: 'error', text: 'Please enter a valid verification code' });
-      return;
-    }
-
-    try {
-      setVerifyingEmail(true);
-      const res = await fetch('/api/v1/auth/me', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-        body: JSON.stringify({
-          email: newEmailInput.trim().toLowerCase(),
-        }),
-      });
-
-      if (res.ok) {
-        setEmail(newEmailInput.trim().toLowerCase());
-        setShowEmailModal(false);
-        setEmailOtpStep('INPUT');
-        setEmailOtpCode('');
-        setNewEmailInput('');
-        await refreshAuth();
-        setStatusMessage({ type: 'success', text: 'Email address verified and updated successfully!' });
-      } else {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update email');
-      }
-    } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Error verifying email address' });
-    } finally {
-      setVerifyingEmail(false);
     }
   };
 
@@ -305,22 +120,23 @@ export default function ProfilePage() {
 
   return (
     <div className="flex-1 flex flex-col p-5 pb-12">
-      {/* Top Header */}
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back to home"
           className="p-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Resident Profile</h1>
-          <p className="text-xs text-slate-500 font-medium">{society?.name || 'Mahaveer Ranches'}</p>
+          <p className="text-xs text-slate-500 font-medium">{society?.name}</p>
         </div>
       </div>
 
       {statusMessage && (
         <div
+          role={statusMessage.type === 'error' ? 'alert' : 'status'}
           className={`mb-4 p-3 rounded-2xl text-xs flex items-center gap-2 ${
             statusMessage.type === 'success'
               ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
@@ -328,65 +144,54 @@ export default function ProfilePage() {
           }`}
         >
           {statusMessage.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" aria-hidden="true" />
           ) : (
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" aria-hidden="true" />
           )}
           <span className="font-semibold">{statusMessage.text}</span>
         </div>
       )}
 
-      {/* Verification Status Banner */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs mb-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-            }`}
-          >
-            {isApproved ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Clock className="w-5 h-5" />}
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold text-slate-900">
-                {isApproved ? 'Approved Resident' : 'Pending Admin Verification'}
-              </span>
-              {isApproved ? (
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center">
-                  <Check className="w-2.5 h-2.5 stroke-[3]" />
-                </span>
-              ) : (
-                <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center">
-                  <Clock className="w-2.5 h-2.5 stroke-[3]" />
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {isApproved
-                ? 'Your flat and mobile identity are active on this society roster.'
-                : 'Society admin will review and approve your application.'}
-            </p>
-          </div>
+      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs mb-5 flex items-center gap-3">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+          }`}
+          aria-hidden="true"
+        >
+          {isApproved ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Clock className="w-5 h-5" />}
+        </div>
+        <div>
+          <span className="text-sm font-extrabold text-slate-900">
+            {isApproved ? 'Approved Resident' : 'Pending Admin Verification'}
+          </span>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {isApproved
+              ? 'Your flat and mobile number are active on this society roster.'
+              : 'A society admin will review and approve your application.'}
+          </p>
         </div>
       </div>
 
       <form onSubmit={handleSaveProfile} className="space-y-4">
-        {/* Profile Card */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3.5">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+        <section
+          aria-labelledby="identity-heading"
+          className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3.5"
+        >
+          <h2 id="identity-heading" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Identity & Contact
           </h2>
 
           <div>
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-              <span>Full Name</span>
-              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                Verified against Roster
-              </span>
+            <label htmlFor="full-name" className="text-xs font-bold text-slate-800 block mb-1">
+              Full Name
             </label>
             <input
+              id="full-name"
               type="text"
               required
+              autoComplete="name"
+              maxLength={100}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
@@ -394,26 +199,22 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
+            <span id="mobile-label" className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
               <span>Mobile Number</span>
               <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                Phone Auth Verified
+                Verified by SMS
               </span>
-            </label>
+            </span>
             <div className="flex gap-2">
-              <input
-                type="text"
-                disabled
-                value={user?.mobile || '+91 98111 22233'}
-                className="flex-1 text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed"
-              />
+              <output
+                aria-labelledby="mobile-label"
+                className="flex-1 text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700"
+              >
+                {user.mobile || 'Not set'}
+              </output>
               <button
                 type="button"
-                onClick={() => {
-                  setNewPhoneInput('');
-                  setPhoneOtpStep('INPUT');
-                  setShowPhoneModal(true);
-                }}
+                onClick={() => setDialog('PHONE')}
                 className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition-colors"
               >
                 Change
@@ -422,26 +223,19 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-              <span>Email Address</span>
-              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                Verification Required
-              </span>
-            </label>
+            <span id="email-label" className="text-xs font-bold text-slate-800 block mb-1">
+              Email Address
+            </span>
             <div className="flex gap-2">
-              <input
-                type="email"
-                disabled
-                value={email}
-                className="flex-1 text-xs font-semibold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed"
-              />
+              <output
+                aria-labelledby="email-label"
+                className="flex-1 text-xs font-semibold p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 truncate"
+              >
+                {user.email || 'Not set'}
+              </output>
               <button
                 type="button"
-                onClick={() => {
-                  setNewEmailInput('');
-                  setEmailOtpStep('INPUT');
-                  setShowEmailModal(true);
-                }}
+                onClick={() => setDialog('EMAIL')}
                 className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition-colors"
               >
                 Change
@@ -450,287 +244,80 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-              <span>Flat Number</span>
-              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                Admin Verified
-              </span>
+            <label htmlFor="flat-number" className="text-xs font-bold text-slate-800 block mb-1">
+              Flat Number
             </label>
             <input
+              id="flat-number"
               type="text"
               required
+              maxLength={32}
               value={flatNumber}
               onChange={(e) => setFlatNumber(e.target.value)}
-              placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
+              placeholder={
+                society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'
+              }
               className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
             />
-            {society?.settings?.flat_format_example && (
-              <p className="text-[10px] text-slate-500 mt-1">
-                Configured society format: <span className="font-semibold text-slate-700">{society.settings.flat_format_example}</span>
-              </p>
-            )}
           </div>
-        </div>
+        </section>
 
-        {/* Commute Role Section */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Commute Preference
-            </h2>
-            <span className="text-[10px] text-slate-400">Sets your default view</span>
-          </div>
+        <section
+          aria-labelledby="commute-heading"
+          className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3"
+        >
+          <h2 id="commute-heading" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Commute Preference
+          </h2>
 
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => setCommuteIntent('SEEKER')}
-              className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                commuteIntent === 'SEEKER'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Search className="w-4 h-4" />
-              <span>Ride Seeker</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (vehicles.length === 0) {
-                  setStatusMessage({
-                    type: 'error',
-                    text: 'Please add a vehicle below before selecting Ride Offerer.',
-                  });
-                }
-                setCommuteIntent('OFFERER');
-              }}
-              className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                commuteIntent === 'OFFERER'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Car className="w-4 h-4" />
-              <span>Ride Offerer</span>
-            </button>
+          <div className="grid grid-cols-3 gap-2 text-xs font-bold" role="group" aria-labelledby="commute-heading">
+            {COMMUTE_OPTIONS.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={commuteIntent === value}
+                onClick={() => {
+                  if (value !== 'SEEKER' && vehicles.length === 0) {
+                    notify('error', 'Add a vehicle below to offer rides.');
+                  }
+                  setCommuteIntent(value);
+                }}
+                className={`py-2.5 px-2 rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                  commuteIntent === value
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1">
-              Destination / Primary Tech Park (Google Places)
-            </label>
-            <PlacesAutocompleteInput
-              value={workLocation}
-              onChange={(loc) => setWorkLocation(loc)}
-              placeholder="Search destination tech park, office campus, or metro..."
-              label=""
-            />
-          </div>
-        </div>
+          <PlacesAutocompleteInput
+            value={workLocation}
+            onChange={(loc, place) => {
+              setWorkLocation(loc);
+              setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
+            }}
+            placeholder="Search tech park, office campus, or metro..."
+            label="Work location (used to find matching rides)"
+          />
+        </section>
 
-        {/* Vehicles Section (Mandatory if Offerer) */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Registered Vehicles
-              </h2>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Required for Ride Offerers (2-Wheelers & 4-Wheelers supported)
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAddVehicle(!showAddVehicle)}
-              className="py-1 px-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Vehicle</span>
-            </button>
-          </div>
+        <VehiclesSection vehicles={vehicles} onAdded={loadVehicles} notify={notify} />
 
-          {vehicles.length === 0 ? (
-            <div className="p-3.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center">
-              <Car className="w-6 h-6 text-slate-300 mx-auto mb-1" />
-              <p className="text-xs font-bold text-slate-700">No vehicles added</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Add your car or bike to offer rides to fellow residents.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {vehicles.map((v) => (
-                <div
-                  key={v.id}
-                  className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                      {v.type === 'TWO_WHEELER' ? '🛵' : '🚗'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">
-                        {v.color} {v.make} {v.model}
-                      </p>
-                      <p className="text-[10px] font-mono font-bold text-slate-500">
-                        {v.registrationNumber} · {v.capacity} seats
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                    Active
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add Vehicle Inline Form */}
-          {showAddVehicle && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3 pt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-950">New Vehicle Details</span>
-                <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
-                  Requires Admin Verification
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewVehType('CAR');
-                    setNewCapacity(3);
-                  }}
-                  className={`py-2 px-2 rounded-lg border text-center cursor-pointer transition-all ${
-                    newVehType === 'CAR'
-                      ? 'bg-emerald-700 text-white border-emerald-700'
-                      : 'bg-white text-slate-700 border-emerald-200'
-                  }`}
-                >
-                  🚗 Car / 4-Wheeler
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewVehType('TWO_WHEELER');
-                    setNewCapacity(1);
-                  }}
-                  className={`py-2 px-2 rounded-lg border text-center cursor-pointer transition-all ${
-                    newVehType === 'TWO_WHEELER'
-                      ? 'bg-emerald-700 text-white border-emerald-700'
-                      : 'bg-white text-slate-700 border-emerald-200'
-                  }`}
-                >
-                  🛵 2-Wheeler / Bike
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder="Make (e.g. Hyundai)"
-                  value={newMake}
-                  onChange={(e) => setNewMake(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Model (e.g. Creta)"
-                  value={newModel}
-                  onChange={(e) => setNewModel(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder="Registration (KA-04-MB-1234)"
-                  value={newReg}
-                  onChange={(e) => setNewReg(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-mono font-bold uppercase outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Color (e.g. White)"
-                  value={newColor}
-                  onChange={(e) => setNewColor(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Seats for Residents</label>
-                  <select
-                    value={newCapacity}
-                    onChange={(e) => setNewCapacity(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                  >
-                    {newVehType === 'TWO_WHEELER' ? (
-                      <option value={1}>1 Pillion Seat</option>
-                    ) : (
-                      <>
-                        <option value={1}>1 Seat</option>
-                        <option value={2}>2 Seats</option>
-                        <option value={3}>3 Seats</option>
-                        <option value={4}>4 Seats</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Fuel Mileage (km/L)</label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min="5"
-                      max="60"
-                      step="0.5"
-                      placeholder="15"
-                      value={newMileage}
-                      onChange={(e) => setNewMileage(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                    />
-                    <span className="text-[11px] font-bold text-slate-500">km/L</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAddVehicle(false)}
-                  className="flex-1 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddVehicle}
-                  className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-2xs"
-                >
-                  Save Vehicle
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Submit Save */}
         <div className="pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md shadow-slate-900/20 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+            className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md shadow-slate-900/20 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer disabled:opacity-60"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" aria-label="Saving" />
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="w-4 h-4" aria-hidden="true" />
                 <span>Save Profile Changes</span>
               </>
             )}
@@ -738,159 +325,23 @@ export default function ProfilePage() {
         </div>
       </form>
 
-      {/* VERIFY PHONE CHANGE MODAL */}
-      {showPhoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Mobile Number</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              All resident mobile numbers require instant SMS OTP verification for community security.
-            </p>
-
-            {phoneOtpStep === 'INPUT' ? (
-              <form onSubmit={handleSendPhoneOtp} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">New Mobile Number</label>
-                  <input
-                    type="tel"
-                    required
-                    value={newPhoneInput}
-                    onChange={(e) => setNewPhoneInput(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full text-xs font-bold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowPhoneModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                  >
-                    Send OTP
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleConfirmPhoneChange} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Enter OTP sent to {newPhoneInput}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={phoneOtpCode}
-                    onChange={(e) => setPhoneOtpCode(e.target.value)}
-                    placeholder="Enter 6-digit OTP (e.g. 123456)"
-                    className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Dev test code: 123456</p>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setPhoneOtpStep('INPUT')}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={verifyingPhone}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
-                  >
-                    {verifyingPhone ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Save'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* VERIFY EMAIL CHANGE MODAL */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-extrabold text-slate-900 mb-1">Update Email Address</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              All resident emails require confirmation code verification to prevent unauthorized updates.
-            </p>
-
-            {emailOtpStep === 'INPUT' ? (
-              <form onSubmit={handleSendEmailOtp} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">New Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={newEmailInput}
-                    onChange={(e) => setNewEmailInput(e.target.value)}
-                    placeholder="resident@workplace.com"
-                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                  >
-                    Send Code
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleConfirmEmailChange} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Enter Verification Code sent to {newEmailInput}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={emailOtpCode}
-                    onChange={(e) => setEmailOtpCode(e.target.value)}
-                    placeholder="Enter 6-digit code (e.g. 123456)"
-                    className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Verification code: 123456</p>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setEmailOtpStep('INPUT')}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={verifyingEmail}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
-                  >
-                    {verifyingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Save'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      <PhoneChangeDialog
+        open={dialog === 'PHONE'}
+        userId={user.id}
+        onClose={() => setDialog(null)}
+        onChanged={async () => {
+          await refreshAuth();
+          notify('success', 'Mobile number verified and updated.');
+        }}
+      />
+      <EmailChangeDialog
+        open={dialog === 'EMAIL'}
+        onClose={() => setDialog(null)}
+        onSaved={async () => {
+          await refreshAuth();
+          notify('success', 'Email address updated.');
+        }}
+      />
     </div>
   );
 }
