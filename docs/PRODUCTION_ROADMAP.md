@@ -110,7 +110,12 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 
 **Console steps for the owner (not code):**
 1. Deploy the index the audit log needs: `firebase deploy --only firestore:indexes`.
-2. Rides created before this release were saved with UTC times and will show 5½ hours late; cancel and re-offer any that are still upcoming, or ask for a one-off migration script.
+2. Fix rides created before this release (saved in UTC, shown 5½ hours late) with the one-time script, after deploying. Dry run first, then apply:
+   ```bash
+   FIREBASE_SERVICE_ACCOUNT_KEY_B64=... npm run migrate:ride-times
+   FIREBASE_SERVICE_ACCOUNT_KEY_B64=... npm run migrate:ride-times -- --apply
+   ```
+   It only rewrites times in the exact format the old app saved, lists anything it leaves alone, and is safe to re-run. Tested against the Firestore emulator.
 
 ---
 
