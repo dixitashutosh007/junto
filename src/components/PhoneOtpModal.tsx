@@ -12,6 +12,7 @@ import {
   resetRecaptchaVerifier,
   toE164IndianMobile,
 } from '@/lib/firebase/phone';
+import { smsSendErrorMessage } from '@/lib/firebase/sms-errors';
 import { Phone, KeyRound, AlertCircle, Loader2 } from 'lucide-react';
 import { User } from '@/types';
 import { clearLoggedOutFlag } from '@/context/AuthContext';
@@ -90,7 +91,7 @@ export function PhoneOtpModal({
         // Development without Firebase: continue to the OTP step and use the test code
         setStep('OTP');
       } else {
-        setError('Unable to send the SMS code. Please check the number and try again.');
+        setError(smsSendErrorMessage(err));
       }
     } finally {
       setLoading(false);
