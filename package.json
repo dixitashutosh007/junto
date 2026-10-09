@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "migrate:ride-times": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-ride-times.ts"
+    "migrate:ride-times": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-ride-times.ts",
+    "grant-app-admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/grant-app-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1147.0",

@@ -14,10 +14,11 @@ Handoff for whoever (person or AI session) continues this release. Read this fir
 |------|-------|
 | Roadmap phases 0–4 | Done, all on the PR branch |
 | CI on the PR (typecheck, tests, lint, build) | Green; no merge conflicts with `main` |
-| Firestore rules (`firestore.rules`, deny all client access) | Published by the owner in the console — **not yet verified** |
-| Index: `audit_events` (`societyId` ↑, `createdAt` ↓) | Created by the owner — **not yet verified** |
-| Field override: `members.userId`, collection-group ascending | Created by the owner — **not yet verified** |
-| Amplify `FIREBASE_SERVICE_ACCOUNT_KEY` / `_B64` set | Not yet confirmed |
+| Firestore rules (`firestore.rules`, deny all client access) | Verified 2026-10-09: live rules match the repo |
+| Index: `audit_events` (`societyId` ↑, `createdAt` ↓) | Verified READY 2026-10-09 (an older ascending one also exists; harmless) |
+| Field override: `members.userId`, collection-group ascending | Verified READY 2026-10-09 |
+| Amplify `FIREBASE_SERVICE_ACCOUNT_KEY` / `_B64` set | Verified 2026-10-09: app-level, valid JSON, no branch overrides |
+| First App Admin granted (`npm run grant-app-admin`) | Not yet done — nobody can approve residents until this is done |
 | Real SMS login on an Amplify preview of this branch | Not yet done |
 | Merge | Not yet |
 | Ride-time migration (`npm run migrate:ride-times`) | Run after merge |
@@ -27,7 +28,9 @@ Handoff for whoever (person or AI session) continues this release. Read this fir
 1. **Verify Firebase config** against the repo files.
    A service-account key with *Firebase Rules Admin*, *Cloud Datastore Index Admin* and
    *Service Usage Consumer* is provided to cloud sessions as `GCP_DEPLOY_KEY_B64` (base64 JSON).
-   It cannot read resident data. Use it only to:
+   Note: as of 2026-10-09 this key is the Firebase Admin SDK account (the same key as
+   Amplify's), so it *can* read resident data; replace it with a deploy-only account.
+   Use it only to:
    - read the deployed rules and indexes and compare them with `firestore.rules` /
      `firestore.indexes.json`;
    - deploy those files (`firebase deploy --only firestore:rules` / `firestore:indexes`)
@@ -35,12 +38,18 @@ Handoff for whoever (person or AI session) continues this release. Read this fir
    Both indexes must show **READY / Enabled** before merging, or sign-in and the audit log fail.
 2. **Amplify:** confirm `FIREBASE_SERVICE_ACCOUNT_KEY` (or `_B64`) exists; production refuses
    to start without it.
-3. **Preview test:** deploy the branch as an Amplify branch preview, add its domain to
+3. **Grant the first App Admin.** The app never grants `SUPER_ADMIN` itself, and the old app
+   created every phone sign-in as a pending resident, so until this is done every account
+   (the owner's too) sees "Verification Pending". After signing in once with the phone, run
+   from the repo root in Google Cloud Shell (logged in as the project owner):
+   `npm ci && npm run grant-app-admin -- --phone <mobile>` (dry run), then add `--apply`.
+   Pass `--society <id>` if asked. The change is written to the audit log.
+4. **Preview test:** deploy the branch as an Amplify branch preview, add its domain to
    Firebase Auth → Authorized domains, then test SMS login, offering a ride at 08:30 (must
    show 08:30), and the browser console for Content-Security-Policy errors.
-4. **Merge** PR #1. Everyone is signed out once (cookie changed).
-5. **Migrate old ride times:** `npm run migrate:ride-times` (dry run), then `-- --apply`.
-6. Optional: SMS region policy (India only), Google Maps API quotas and key restrictions,
+5. **Merge** PR #1. Everyone is signed out once (cookie changed).
+6. **Migrate old ride times:** `npm run migrate:ride-times` (dry run), then `-- --apply`.
+7. Optional: SMS region policy (India only), Google Maps API quotas and key restrictions,
    App Check (`NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY`, enforce only after testing login).
 
 ## Decisions already made
