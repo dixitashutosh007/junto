@@ -149,8 +149,6 @@ export class MockDynamoRepository implements ISocietyRepository {
       workLocationName: 'Manyata Tech Park, Hebbal',
       workLatitude: 13.05,
       workLongitude: 77.62,
-      workLatitude: 13.0500,
-      workLongitude: 77.6200,
       createdAt: new Date().toISOString(),
     };
     this.users.set(offererUser.id, offererUser);
@@ -195,8 +193,6 @@ export class MockDynamoRepository implements ISocietyRepository {
       workLocationName: 'Manyata Tech Park, Hebbal',
       workLatitude: 13.05,
       workLongitude: 77.62,
-      workLatitude: 12.9800,
-      workLongitude: 77.6600,
       createdAt: new Date().toISOString(),
     };
     this.users.set(seekerUser.id, seekerUser);
@@ -224,8 +220,6 @@ export class MockDynamoRepository implements ISocietyRepository {
       commuteIntent: 'OFFERER',
       workLocationName: 'EcoSpace, Bellandur Outer Ring Road',
       workLatitude: 12.926,
-      workLongitude: 77.6762,
-      workLatitude: 12.9260,
       workLongitude: 77.6762,
       createdAt: new Date().toISOString(),
     };
@@ -270,8 +264,6 @@ export class MockDynamoRepository implements ISocietyRepository {
       workLocationName: 'ITPL, Whitefield',
       workLatitude: 12.9867,
       workLongitude: 77.7366,
-      workLatitude: 12.9856,
-      workLongitude: 77.7314,
       createdAt: new Date().toISOString(),
     };
     this.users.set(offererUser3.id, offererUser3);
