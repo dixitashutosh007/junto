@@ -40,8 +40,17 @@ export async function PUT(req: NextRequest) {
   if (!parsed.success) {
     return errorResponse(parsed.error.issues[0]?.message || 'Invalid profile details');
   }
-  const { fullName, email, flatNumber, commuteIntent, workLocationName, gender, profileCompleted } =
-    parsed.data;
+  const {
+    fullName,
+    email,
+    flatNumber,
+    commuteIntent,
+    workLocationName,
+    workLatitude,
+    workLongitude,
+    gender,
+    profileCompleted,
+  } = parsed.data;
 
   const repo = getRepository();
   const existingUser = await repo.getUserById(auth.userId);
@@ -56,7 +65,12 @@ export async function PUT(req: NextRequest) {
     userUpdates.emailVerified = false;
   }
   if (commuteIntent) userUpdates.commuteIntent = commuteIntent;
-  if (workLocationName !== undefined) userUpdates.workLocationName = workLocationName;
+  if (workLocationName !== undefined) {
+    userUpdates.workLocationName = workLocationName;
+    // Coordinates only travel with a place picked from suggestions; typed text clears them
+    userUpdates.workLatitude = workLatitude;
+    userUpdates.workLongitude = workLongitude;
+  }
   if (gender) userUpdates.gender = gender;
   if (profileCompleted !== undefined) userUpdates.profileCompleted = profileCompleted;
 

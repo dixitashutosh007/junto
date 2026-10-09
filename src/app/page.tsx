@@ -53,21 +53,21 @@ export default function HomePage() {
           setRides(data.rides || []);
         }
 
-        // Load automated matches for user commute
-        const matchRes = await apiFetch('/api/v1/rides/matches', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            dropoffName: 'Manyata Tech Park',
-            dropoffLat: 13.05,
-            dropoffLng: 77.62,
-          }),
-        });
-        if (matchRes.ok) {
-          const matchData = await matchRes.json();
-          setMatches(matchData.matches || []);
+        // Matches need the resident's saved work location
+        if (user?.workLatitude !== undefined && user?.workLongitude !== undefined) {
+          const matchRes = await apiFetch('/api/v1/rides/matches', {
+            json: {
+              dropoffName: user.workLocationName,
+              dropoffLat: user.workLatitude,
+              dropoffLng: user.workLongitude,
+            },
+          });
+          if (matchRes.ok) {
+            const matchData = await matchRes.json();
+            setMatches(matchData.matches || []);
+          }
+        } else {
+          setMatches([]);
         }
       } catch (err) {
         console.error('Error fetching home data', err);
@@ -76,7 +76,7 @@ export default function HomePage() {
       }
     }
     loadData();
-  }, [activePersona]);
+  }, [activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName]);
 
   const handleRequestRide = async (journeyId: string) => {
     try {
@@ -360,6 +360,16 @@ export default function HomePage() {
       )}
 
       {/* Matches For You */}
+      {user && (user.workLatitude === undefined || user.workLongitude === undefined) && (
+        <div className="mx-5 mb-4 p-3 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
+          Pick your work location in{' '}
+          <Link href="/profile" className="font-semibold underline">
+            your profile
+          </Link>{' '}
+          to see rides that match your commute.
+        </div>
+      )}
+
       {matches.length > 0 && (
         <section className="px-5 mb-5">
           <div className="flex items-center justify-between mb-2.5">

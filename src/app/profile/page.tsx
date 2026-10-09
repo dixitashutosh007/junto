@@ -48,6 +48,11 @@ export default function ProfilePage() {
     user?.commuteIntent === 'OFFERER' ? 'OFFERER' : 'SEEKER'
   );
   const [workLocation, setWorkLocation] = useState(user?.workLocationName || '');
+  const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(
+    user?.workLatitude !== undefined && user?.workLongitude !== undefined
+      ? { lat: user.workLatitude, lng: user.workLongitude }
+      : null
+  );
   const [gender, setGender] = useState(user?.gender || 'PREFER_NOT_TO_SAY');
 
   // Vehicles
@@ -82,6 +87,11 @@ export default function ProfilePage() {
       setFullName(user.fullName || '');
       setEmail(user.email || '');
       setWorkLocation(user.workLocationName || '');
+      setWorkCoords(
+        user.workLatitude !== undefined && user.workLongitude !== undefined
+          ? { lat: user.workLatitude, lng: user.workLongitude }
+          : null
+      );
       setGender(user.gender || 'PREFER_NOT_TO_SAY');
       if (user.commuteIntent === 'OFFERER' || user.commuteIntent === 'SEEKER') {
         setCommuteIntent(user.commuteIntent);
@@ -136,6 +146,8 @@ export default function ProfilePage() {
           flatNumber,
           commuteIntent,
           workLocationName: workLocation,
+          workLatitude: workCoords?.lat,
+          workLongitude: workCoords?.lng,
           gender,
         }),
       });
@@ -562,7 +574,10 @@ export default function ProfilePage() {
             </label>
             <PlacesAutocompleteInput
               value={workLocation}
-              onChange={(loc) => setWorkLocation(loc)}
+              onChange={(loc, place) => {
+                setWorkLocation(loc);
+                setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
+              }}
               placeholder="Search destination tech park, office campus, or metro..."
               label=""
             />

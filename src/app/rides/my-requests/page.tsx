@@ -167,7 +167,25 @@ export default function MyRequestsPage() {
 
                 {/* Actions */}
                 {!isCancelled && (
-                  <div className="pt-1 flex items-center justify-end">
+                  <div className="pt-1 flex items-center justify-between">
+                    {isAccepted && req.journey ? (
+                      <div className="flex gap-3 text-xs">
+                        <Link
+                          href={`/feedback?journeyId=${req.journeyId}&toUserId=${req.journey.offererUserId}&name=${encodeURIComponent(req.offererName)}`}
+                          className="font-semibold text-emerald-700 underline"
+                        >
+                          Rate driver
+                        </Link>
+                        <Link
+                          href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
+                          className="font-semibold text-zinc-500 underline"
+                        >
+                          Report
+                        </Link>
+                      </div>
+                    ) : (
+                      <span />
+                    )}
                     <button
                       onClick={() => handleCancelRequest(req.id)}
                       className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"

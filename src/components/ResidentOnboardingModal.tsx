@@ -33,7 +33,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [email, setEmail] = useState(user?.email?.includes('@societyapps.org') ? '' : (user?.email || ''));
   const [flatNumber, setFlatNumber] = useState('');
   const [commuteRole, setCommuteRole] = useState<'SEEKER' | 'OFFERER'>('SEEKER');
-  const [workLocation, setWorkLocation] = useState(user?.workLocationName || 'Manyata Tech Park');
+  const [workLocation, setWorkLocation] = useState(user?.workLocationName || '');
+  const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY'>('PREFER_NOT_TO_SAY');
 
   // Vehicle Details (Mandatory if Offerer)
@@ -130,6 +131,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
           flatNumber: flatNumber.trim().toUpperCase(),
           commuteIntent: commuteRole,
           workLocationName: workLocation,
+          workLatitude: workCoords?.lat,
+          workLongitude: workCoords?.lng,
           gender,
           profileCompleted: true,
         }),
@@ -432,7 +435,10 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               </label>
               <PlacesAutocompleteInput
                 value={workLocation}
-                onChange={(loc) => setWorkLocation(loc)}
+                onChange={(loc, place) => {
+                  setWorkLocation(loc);
+                  setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
+                }}
                 placeholder="Search workplace, office campus, tech park or metro..."
                 label=""
                 required

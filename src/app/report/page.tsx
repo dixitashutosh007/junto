@@ -1,15 +1,27 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
-import React, { useState } from 'react';
+import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import React, { Suspense, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ReportPage() {
-  const { activePersona } = useAuth();
+  return (
+    <Suspense fallback={null}>
+      <ReportForm />
+    </Suspense>
+  );
+}
+
+// Opened from a ride or profile: ?userId=…&journeyId=…&name=…
+function ReportForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const reportedUserId = params.get('userId');
+  const journeyId = params.get('journeyId') ?? undefined;
+  const reportedName = params.get('name') || 'this resident';
+  const [error, setError] = useState('');
 
   const [category, setCategory] = useState('INAPPROPRIATE_BEHAVIOUR');
   const [description, setDescription] = useState('');
@@ -17,24 +29,19 @@ export default function ReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       const res = await apiFetch('/api/v1/moderation/reports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reportedUserId: 'usr-offerer-001',
-          category,
-          description,
-        }),
+        json: { reportedUserId, journeyId, category, description },
       });
       if (res.ok) {
         setSubmitted(true);
         setTimeout(() => router.push('/'), 1200);
+      } else {
+        setError(await apiErrorMessage(res, 'Could not submit the report. Please try again.'));
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setError('Connection problem. Please try again.');
     }
   };
 
@@ -49,11 +56,18 @@ export default function ReportPage() {
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Report an Issue</h1>
-          <p className="text-xs text-zinc-500">Confidential safety and conduct reporting</p>
+          <p className="text-xs text-zinc-500">Confidential report about {reportedName}</p>
         </div>
       </div>
 
-      {submitted ? (
+      {!reportedUserId ? (
+        <div className="my-auto text-center py-12 px-6 text-xs text-zinc-600 space-y-3">
+          <p>Reports are made about a specific resident, from one of your rides.</p>
+          <Link href="/rides/my-requests" className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white font-semibold">
+            Go to my rides
+          </Link>
+        </div>
+      ) : submitted ? (
         <div className="my-auto text-center py-12 px-6">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
             <CheckCircle2 className="w-10 h-10" />
@@ -66,8 +80,9 @@ export default function ReportPage() {
       ) : (
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Category</label>
+            <label htmlFor="category" className="text-xs font-semibold text-zinc-700 block mb-1">Category</label>
             <select
+              id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
@@ -83,11 +98,14 @@ export default function ReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">
+            <label htmlFor="description" className="text-xs font-semibold text-zinc-700 block mb-1">
               Description of the Incident
             </label>
             <textarea
+              id="description"
               required
+              minLength={5}
+              maxLength={1000}
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -95,6 +113,12 @@ export default function ReportPage() {
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:outline-hidden"
             />
           </div>
+
+          {error && (
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+              {error}
+            </div>
+          )}
 
           <div className="mt-auto pt-4">
             <button

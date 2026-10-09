@@ -1,15 +1,27 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
-import React, { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import React, { Suspense, useState } from 'react';
 import { ArrowLeft, CheckCircle2, MessageSquare, ThumbsUp, Heart, Smile } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function QualitativeFeedbackPage() {
-  const { activePersona } = useAuth();
+  return (
+    <Suspense fallback={null}>
+      <FeedbackForm />
+    </Suspense>
+  );
+}
+
+// Opened from a shared ride: ?journeyId=…&toUserId=…&name=…
+function FeedbackForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const journeyId = params.get('journeyId');
+  const toUserId = params.get('toUserId');
+  const otherName = params.get('name') || 'your co-rider';
+  const [error, setError] = useState('');
 
   const [outcome, setOutcome] = useState('COMPLETED');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -35,27 +47,19 @@ export default function QualitativeFeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       const res = await apiFetch('/api/v1/rides/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          journeyId: 'jrn-001',
-          toUserId: 'usr-offerer-001',
-          outcome,
-          qualitativeTags: selectedTags,
-          privateNote: note,
-        }),
+        json: { journeyId, toUserId, outcome, qualitativeTags: selectedTags, privateNote: note || undefined },
       });
-
       if (res.ok) {
         setSubmitted(true);
         setTimeout(() => router.push('/'), 1200);
+      } else {
+        setError(await apiErrorMessage(res, 'Could not submit feedback. Please try again.'));
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setError('Connection problem. Please try again.');
     }
   };
 
@@ -71,11 +75,18 @@ export default function QualitativeFeedbackPage() {
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">How was your commute?</h1>
-          <p className="text-xs text-zinc-500">Share respectful community feedback</p>
+          <p className="text-xs text-zinc-500">Feedback for {otherName}</p>
         </div>
       </div>
 
-      {submitted ? (
+      {!journeyId || !toUserId ? (
+        <div className="my-auto text-center py-12 px-6 text-xs text-zinc-600 space-y-3">
+          <p>Feedback is left for a specific shared ride.</p>
+          <Link href="/rides/my-requests" className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white font-semibold">
+            Go to my rides
+          </Link>
+        </div>
+      ) : submitted ? (
         <div className="my-auto text-center py-12 px-6">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
             <CheckCircle2 className="w-10 h-10" />
@@ -89,8 +100,9 @@ export default function QualitativeFeedbackPage() {
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-5">
           {/* Journey Outcome */}
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1.5">Journey Outcome</label>
+            <label htmlFor="outcome" className="text-xs font-semibold text-zinc-700 block mb-1.5">Journey Outcome</label>
             <select
+              id="outcome"
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
@@ -118,6 +130,7 @@ export default function QualitativeFeedbackPage() {
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
+                    aria-pressed={isSelected}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                       isSelected
                         ? 'bg-emerald-600 text-white shadow-xs'
@@ -133,10 +146,12 @@ export default function QualitativeFeedbackPage() {
 
           {/* Optional Note */}
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1.5">
+            <label htmlFor="private-note" className="text-xs font-semibold text-zinc-700 block mb-1.5">
               Private Note (Optional)
             </label>
             <textarea
+              id="private-note"
+              maxLength={500}
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -144,6 +159,12 @@ export default function QualitativeFeedbackPage() {
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
           </div>
+
+          {error && (
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+              {error}
+            </div>
+          )}
 
           <div className="mt-auto pt-4">
             <button

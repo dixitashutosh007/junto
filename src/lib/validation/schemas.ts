@@ -68,6 +68,8 @@ export const UpdateProfileSchema = z.object({
   flatNumber: z.string().trim().min(1).max(32).optional(),
   commuteIntent: z.enum(['OFFERER', 'SEEKER', 'BOTH']).optional(),
   workLocationName: z.string().trim().max(200).optional(),
+  workLatitude: z.number().min(-90).max(90).optional(),
+  workLongitude: z.number().min(-180).max(180).optional(),
   gender: GenderSchema.optional(),
   profileCompleted: z.boolean().optional(),
 });

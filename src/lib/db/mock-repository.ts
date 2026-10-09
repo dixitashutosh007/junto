@@ -120,6 +120,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Vikram Mehta',
       gender: 'MALE',
       workLocationName: 'Electronic City Phase 1',
+      workLatitude: 12.8452,
+      workLongitude: 77.6602,
       createdAt: new Date().toISOString(),
     };
     this.users.set(adminUser.id, adminUser);
@@ -145,6 +147,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       gender: 'MALE',
       commuteIntent: 'OFFERER',
       workLocationName: 'Manyata Tech Park, Hebbal',
+      workLatitude: 13.05,
+      workLongitude: 77.62,
       workLatitude: 13.0500,
       workLongitude: 77.6200,
       createdAt: new Date().toISOString(),
@@ -188,7 +192,9 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Priya Sharma',
       gender: 'FEMALE',
       commuteIntent: 'SEEKER',
-      workLocationName: 'Bagmane Tech Park, CV Raman Nagar',
+      workLocationName: 'Manyata Tech Park, Hebbal',
+      workLatitude: 13.05,
+      workLongitude: 77.62,
       workLatitude: 12.9800,
       workLongitude: 77.6600,
       createdAt: new Date().toISOString(),
@@ -217,6 +223,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       gender: 'MALE',
       commuteIntent: 'OFFERER',
       workLocationName: 'EcoSpace, Bellandur Outer Ring Road',
+      workLatitude: 12.926,
+      workLongitude: 77.6762,
       workLatitude: 12.9260,
       workLongitude: 77.6762,
       createdAt: new Date().toISOString(),
@@ -260,6 +268,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       gender: 'FEMALE',
       commuteIntent: 'BOTH',
       workLocationName: 'ITPL, Whitefield',
+      workLatitude: 12.9867,
+      workLongitude: 77.7366,
       workLatitude: 12.9856,
       workLongitude: 77.7314,
       createdAt: new Date().toISOString(),
@@ -302,6 +312,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Rahul Verma',
       gender: 'MALE',
       workLocationName: 'Ecospace, Bellandur',
+      workLatitude: 12.926,
+      workLongitude: 77.6762,
       createdAt: new Date().toISOString(),
     };
     this.users.set(pendingUser.id, pendingUser);
@@ -325,6 +337,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       fullName: 'Sneha Patil',
       gender: 'FEMALE',
       workLocationName: 'Prestige Tech Cloud, Hebbal',
+      workLatitude: 13.0358,
+      workLongitude: 77.597,
       createdAt: new Date().toISOString(),
     };
     this.users.set(pendingUser2.id, pendingUser2);

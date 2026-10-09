@@ -277,7 +277,7 @@ export default function MyRidesPage() {
 
                     <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
                       <Link
-                        href="/rides/requests"
+                        href={`/rides/requests?journeyId=${ride.id}`}
                         className="text-emerald-700 font-semibold hover:underline flex items-center gap-1"
                       >
                         <Users className="w-3.5 h-3.5" />
