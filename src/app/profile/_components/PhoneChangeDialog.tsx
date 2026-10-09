@@ -13,6 +13,7 @@ import {
   resetRecaptchaVerifier,
   toE164IndianMobile,
 } from '@/lib/firebase/phone';
+import { smsSendErrorMessage } from '@/lib/firebase/sms-errors';
 
 const RECAPTCHA_ID = 'profile-recaptcha';
 
@@ -73,7 +74,7 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
     } catch (err) {
       resetRecaptchaVerifier(RECAPTCHA_ID);
       console.warn('Phone verification SMS failed', err);
-      setError('Unable to send the SMS code. Please try again.');
+      setError(smsSendErrorMessage(err));
     } finally {
       setBusy(false);
     }
