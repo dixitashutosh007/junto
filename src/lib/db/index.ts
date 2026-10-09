@@ -5,7 +5,6 @@ import { hasFirebaseCredentials } from '../firebase/admin';
 
 // Global singleton instance for local server memory lifecycle
 declare global {
-  // eslint-disable-next-line no-var
   var __societyRepoInstance: ISocietyRepository | undefined;
 }
 

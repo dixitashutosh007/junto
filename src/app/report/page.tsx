@@ -2,7 +2,7 @@
 
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import React, { Suspense, useState } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 

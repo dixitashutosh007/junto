@@ -1,9 +1,10 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { useIsClient } from '@/hooks/useIsClient';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Car, Clock, MapPin, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MapPin, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Vehicle } from '@/types';
@@ -12,15 +13,19 @@ import { PlaceSuggestion } from '@/lib/services/places-data';
 import { istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
-  const { user, activePersona, society } = useAuth();
+  const { activePersona, society } = useAuth();
   const router = useRouter();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [journeyDate, setJourneyDate] = useState('');
-  const [minDate, setMinDate] = useState('');
-  const [maxDate, setMaxDate] = useState('');
-  const [next7Days, setNext7Days] = useState<{ dateStr: string; label: string; weekday: string }[]>([]);
+  // Day chips depend on today's date in India, so they're built in the browser
+  const isClient = useIsClient();
+  const next7Days = isClient ? upcomingIstDays(7) : [];
+  const minDate = next7Days[0]?.dateStr ?? '';
+  const maxDate = next7Days[next7Days.length - 1]?.dateStr ?? '';
+  const [pickedDate, setJourneyDate] = useState('');
+  // Defaults to tomorrow until the offerer picks a day
+  const journeyDate = pickedDate || next7Days[1]?.dateStr || '';
   const [destinationName, setDestinationName] = useState('');
   const [destinationPlace, setDestinationPlace] = useState<PlaceSuggestion | null>(null);
   const [formError, setFormError] = useState('');
@@ -32,15 +37,6 @@ export default function OfferRidePage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Ride dates are India time, whatever the device's time zone
-    const days = upcomingIstDays(7);
-    setMinDate(days[0].dateStr);
-    setMaxDate(days[days.length - 1].dateStr);
-    setNext7Days(days);
-
-    // Default to tomorrow
-    setJourneyDate(days[1].dateStr);
-
     async function loadVehicles() {
       const res = await apiFetch('/api/v1/user/vehicles');
       if (res.ok) {
@@ -286,7 +282,7 @@ export default function OfferRidePage() {
                 <span>⛽ Fuel Sharing Advisory</span>
               </div>
               <p className="text-[10px] text-emerald-800 leading-relaxed">
-                Junto estimates fair fuel points based on your vehicle's fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
+                Junto estimates fair fuel points based on your vehicle&apos;s fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
               </p>
             </div>
             <p className="text-[10px] text-zinc-500">

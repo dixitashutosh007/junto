@@ -4,7 +4,6 @@ import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
-  User,
   Mail,
   Home,
   Car,
@@ -15,11 +14,10 @@ import {
   ShieldCheck,
   Send,
   Loader2,
-  MapPin,
   Sparkles,
 } from 'lucide-react';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
-import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -41,7 +39,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [vehicleType, setVehicleType] = useState<'CAR' | 'TWO_WHEELER'>('CAR');
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
-  const [color, setColor] = useState('White');
+  const color = '';
   const [regNumber, setRegNumber] = useState('');
   const [capacity, setCapacity] = useState(4);
   const [mileage, setMileage] = useState('15'); // km/L for fuel points estimation
@@ -148,8 +146,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
       setTimeout(() => {
         onCompleted();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Error submitting application');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Error submitting application');
     } finally {
       setSubmitting(false);
     }
@@ -228,6 +226,26 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                   />
                   <Mail className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="onboarding-gender" className="text-xs font-bold text-slate-800 block mb-1">
+                  Gender
+                </label>
+                <select
+                  id="onboarding-gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as typeof gender)}
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
+                >
+                  <option value="FEMALE">Female</option>
+                  <option value="MALE">Male</option>
+                  <option value="OTHER">Other</option>
+                  <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Only used for rides an offerer limits to women or men. Never shown to other residents.
+                </p>
               </div>
 
               {/* Flat Number */}

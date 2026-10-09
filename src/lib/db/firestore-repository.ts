@@ -212,7 +212,7 @@ export class FirestoreRepository implements ISocietyRepository {
       .doc(societyId)
       .collection('members')
       .doc(userId);
-    const updates: any = {
+    const updates: Partial<SocietyMembership> = {
       status,
       updatedAt: new Date().toISOString(),
     };
@@ -319,6 +319,9 @@ export class FirestoreRepository implements ISocietyRepository {
       .doc(societyId)
       .collection('schedules')
       .doc(scheduleId);
+    // Only the schedule's owner can deactivate it (matches the mock repository)
+    const doc = await ref.get();
+    if (!doc.exists || (doc.data() as RideSchedule).userId !== userId) return;
     await ref.update({ isActive: false });
   }
 

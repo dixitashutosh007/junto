@@ -2,7 +2,7 @@
 
 import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, X, Loader2 } from 'lucide-react';
 import { PlaceSuggestion } from '@/lib/services/places-data';
 
 interface PlacesAutocompleteInputProps {
@@ -20,15 +20,10 @@ export function PlacesAutocompleteInput({
   label = 'Destination Hub',
   required = false,
 }: PlacesAutocompleteInputProps) {
-  const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setQuery(value);
-  }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -58,7 +53,6 @@ export function PlacesAutocompleteInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setQuery(val);
     onChange(val);
     if (val.trim().length > 1) {
       fetchSuggestions(val);
@@ -69,7 +63,6 @@ export function PlacesAutocompleteInput({
   };
 
   const handleSelectSuggestion = async (item: PlaceSuggestion) => {
-    setQuery(item.primaryText);
     setIsOpen(false);
 
     // If item already has non-default coordinates, return immediately
@@ -102,7 +95,6 @@ export function PlacesAutocompleteInput({
   };
 
   const handleClear = () => {
-    setQuery('');
     onChange('');
     setSuggestions([]);
     setIsOpen(false);
@@ -120,10 +112,10 @@ export function PlacesAutocompleteInput({
         <input
           type="text"
           required={required}
-          value={query}
+          value={value}
           onFocus={() => {
             if (suggestions.length > 0) setIsOpen(true);
-            else fetchSuggestions(query);
+            else fetchSuggestions(value);
           }}
           onChange={handleInputChange}
           placeholder={placeholder}
@@ -132,7 +124,7 @@ export function PlacesAutocompleteInput({
 
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" />}
-          {query && (
+          {value && (
             <button
               type="button"
               onClick={handleClear}

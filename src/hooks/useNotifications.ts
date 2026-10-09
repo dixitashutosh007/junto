@@ -1,18 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useIsClient } from '@/hooks/useIsClient';
 
 export function useNotifications() {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [isSupported, setIsSupported] = useState(false);
-
-  useEffect(() => {
-    // The service worker itself is registered by <ServiceWorkerRegistration />
-    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
-      setIsSupported(true);
-      setPermission(Notification.permission);
-    }
-  }, []);
+  const isClient = useIsClient();
+  const isSupported = isClient && 'Notification' in window && 'serviceWorker' in navigator;
+  // Set after the user answers the permission prompt; otherwise read the browser's value
+  const [answeredPermission, setPermission] = useState<NotificationPermission | null>(null);
+  const permission: NotificationPermission =
+    answeredPermission ?? (isSupported ? Notification.permission : 'default');
 
   const requestPermission = async () => {
     if (!isSupported) return false;

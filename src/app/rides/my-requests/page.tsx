@@ -3,7 +3,9 @@
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useApiData } from '@/hooks/useApiData';
+import { RideOccurrence, RideRequest } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
   Search,
@@ -13,40 +15,33 @@ import {
   XCircle,
   Phone,
   Home,
-  CheckCircle2,
-  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
+type MyRequest = RideRequest & {
+  journey: RideOccurrence | null;
+  offererName: string;
+  offererMobile?: string;
+  offererFlat?: string;
+  vehicleName: string;
+  vehiclePlate?: string;
+};
+
 export default function MyRequestsPage() {
   const { activePersona } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-
-  const [loadError, setLoadError] = useState('');
-
-  const loadRequests = async () => {
-    try {
-      setLoading(true);
-      setLoadError('');
-      const res = await apiFetch('/api/v1/rides/requests');
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data.requests || []);
-      } else {
-        setLoadError('Could not load your requests.');
-      }
-    } catch {
-      setLoadError('Connection problem. Check your internet and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, [activePersona]);
+  const {
+    data,
+    loading,
+    error: loadError,
+    reload: loadRequests,
+  } = useApiData(
+    '/api/v1/rides/requests',
+    (json) => (json as { requests: MyRequest[] }).requests ?? [],
+    'Could not load your requests.',
+    activePersona
+  );
+  const requests = data ?? [];
 
   const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
 
@@ -91,7 +86,7 @@ export default function MyRequestsPage() {
       {loading ? (
         <Loading label="Loading your requests…" />
       ) : loadError ? (
-        <LoadError message={loadError} onRetry={() => void loadRequests()} />
+        <LoadError message={loadError} onRetry={loadRequests} />
       ) : requests.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
@@ -111,7 +106,6 @@ export default function MyRequestsPage() {
           {requests.map((req) => {
             const isAccepted = req.status === 'ACCEPTED';
             const isCancelled = req.status === 'CANCELLED';
-            const isPending = req.status === 'REQUESTED';
 
             return (
               <div

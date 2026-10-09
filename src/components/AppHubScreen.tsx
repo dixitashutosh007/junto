@@ -1,16 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
-  Sparkles,
   ArrowRight,
-  ShieldCheck,
-  Building2,
-  Users,
   Grid,
-  CheckCircle2,
   GraduationCap,
   Star,
   ShoppingBag,

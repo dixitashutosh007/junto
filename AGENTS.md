@@ -18,8 +18,14 @@ Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODU
 - `npm ci --legacy-peer-deps`
 - `npm run typecheck`
 - `npm test`
-- `npm run lint`
+- `npm run lint` (zero warnings allowed)
 - `npm run build`
+
+**Frontend conventions:**
+- Call the API with `apiFetch` from `src/lib/api-client.ts` (never hand-build `x-dev-user-id` / `x-society-id` headers); load data with `useApiData`.
+- Read the current date or browser-only APIs during render via `useIsClient`, not by copying them into state in an effect.
+- Use `Dialog` / `ConfirmDialog` from `src/components/ui/Dialog.tsx` (never `window.confirm`), and `Loading` / `LoadError` for load states.
+- Every form control needs a label; icon-only buttons and links need `aria-label`; text must meet WCAG AA contrast (no `*-400` grey text).
 
 **Layout:**
 - API routes: `src/app/api/v1/**/route.ts`

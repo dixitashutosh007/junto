@@ -37,7 +37,10 @@ export function PhoneOtpModal({
   societyCode,
   skipReload = false,
 }: PhoneOtpModalProps) {
-  const [phone, setPhone] = useState(defaultMobile || '+91');
+  // Until the user edits it, the number field shows the default mobile
+  const [phoneInput, setPhone] = useState<string | null>(null);
+  const phone =
+    phoneInput ?? (defaultMobile ? (defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`) : '+91');
   const [verificationCode, setVerificationCode] = useState('');
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -45,10 +48,6 @@ export function PhoneOtpModal({
   const [error, setError] = useState('');
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
   const [now, setNow] = useState(0);
-
-  useEffect(() => {
-    if (defaultMobile) setPhone(defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`);
-  }, [defaultMobile]);
 
   // Tick once a second while the resend cooldown is running
   useEffect(() => {

@@ -11,10 +11,7 @@ import {
   ArrowRight,
   Phone,
   Building2,
-  CheckCircle2,
   MapPin,
-  Clock,
-  Layers,
 } from 'lucide-react';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 
@@ -27,7 +24,6 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
   const router = useRouter();
   const [inviteCode, setInviteCode] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'OFFERER' | 'SEEKER'>('OFFERER');
 
   return (
     <div className="flex-1 flex flex-col justify-between bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950 text-white min-h-[90vh] px-6 py-8 relative overflow-hidden">

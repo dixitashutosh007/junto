@@ -2,9 +2,8 @@
 
 import { apiFetch } from '@/lib/api-client';
 import React, { Suspense, use, useState } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Building, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { useAuth } from '@/context/AuthContext';
@@ -22,7 +21,6 @@ export default function JoinSocietyPage({ params }: { params: JoinParams }) {
 }
 
 function JoinSocietyForm({ params }: { params: JoinParams }) {
-  const router = useRouter();
   const { societyCode } = use(params);
   const { user, isAuthenticated } = useAuth();
 

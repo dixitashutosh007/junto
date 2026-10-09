@@ -30,11 +30,8 @@ jobs:
       - name: Unit and route tests
         run: npm test
 
-      # Existing lint errors are tracked in docs/PRODUCTION_ROADMAP.md (task 4.6).
-      # Remove continue-on-error once they are fixed so lint becomes blocking.
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Build
         run: npm run build

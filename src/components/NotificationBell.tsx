@@ -1,7 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import {
@@ -23,11 +23,9 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await apiFetch('/api/v1/notifications');
       if (res.ok) {
         const data = await res.json();
@@ -36,16 +34,18 @@ export function NotificationBell() {
       }
     } catch (e) {
       console.error('Failed to load notifications', e);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // Poll every 15s for new activity
-    return () => clearInterval(interval);
-  }, [activePersona]);
+    // Poll every 15s for new activity; the first load runs right away
+    const timeout = setTimeout(fetchNotifications, 0);
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [fetchNotifications, activePersona]);
 
   const markAllRead = async () => {
     try {

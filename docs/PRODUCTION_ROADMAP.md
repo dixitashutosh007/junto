@@ -119,7 +119,7 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 
 ---
 
-## Phase 4 — Multi-society & UI/UX (🟡, 2–3 days)
+## Phase 4 — Multi-society & UI/UX (🟡, 2–3 days) ✅ Done
 
 | # | Task | Files |
 |---|------|-------|
@@ -131,6 +131,18 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 | 4.6 | Fix the 49 ESLint errors (setState-in-effect, `any`) | across `src` |
 
 **Done when:** a second society can onboard and use the app end-to-end with no data crossing; Lighthouse accessibility ≥ 90.
+
+**Implementation notes:**
+- Society selection: the `junto_society_id` cookie, falling back to the resident's own active/pending membership (`preferredMembership`). Signing in without an invite code uses the existing membership; new numbers must join through an invite link.
+- `src/lib/api-client.ts` (`apiFetch`) replaced ~30 hand-built header blocks; `useApiData` and `useIsClient` hooks replaced effect-driven state.
+- Demo pages replaced: seat requests per ride, feedback/report opened from a specific ride, home matches from the saved work location.
+- Admin (1104 → 221 lines) and profile (922 → 347 lines) split into `_components`; shared accessible `Dialog` / `ConfirmDialog`.
+- Accessibility measured with axe-core (WCAG 2.1 AA) on 12 screens: 76 violations → 0.
+- Offline page and a service worker that never caches private pages; verified offline in a production build.
+- ESLint: 49 errors / 94 warnings → 0 / 0, and lint now blocks CI (`--max-warnings 0`).
+
+**Console steps for the owner (not code):**
+1. Deploy the new index override (members by user, used at sign-in): `firebase deploy --only firestore:indexes`.
 
 ---
 

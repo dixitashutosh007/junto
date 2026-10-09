@@ -1,11 +1,12 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { useIsClient } from '@/hooks/useIsClient';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Search, MapPin, Clock, ArrowLeft, Filter, Car, CheckCircle2, Check } from 'lucide-react';
+import { Search, MapPin, Clock, ArrowLeft, CheckCircle2, Check } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
@@ -20,12 +21,11 @@ export default function FindRidePage() {
   const [requestedRides, setRequestedRides] = useState<Record<string, boolean>>({});
 
   const [selectedDate, setSelectedDate] = useState('ALL');
-  const [next7Days, setNext7Days] = useState<{ dateStr: string; label: string; weekday: string }[]>([]);
-
-  useEffect(() => {
-    const daysList = [{ dateStr: 'ALL', label: 'All', weekday: 'Any Day' }, ...upcomingIstDays(7)];
-    setNext7Days(daysList);
-  }, []);
+  // Day chips depend on today's date in India, so they're built in the browser
+  const isClient = useIsClient();
+  const next7Days = isClient
+    ? [{ dateStr: 'ALL', label: 'All', weekday: 'Any Day' }, ...upcomingIstDays(7)]
+    : [];
 
   const [loadError, setLoadError] = useState('');
 

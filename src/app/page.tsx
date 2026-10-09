@@ -14,7 +14,6 @@ import {
   Users,
   ShieldCheck,
   ChevronRight,
-  ArrowRight,
   AlertCircle,
   Sparkles,
   MessageSquare,
@@ -24,7 +23,7 @@ import {
   Phone,
 } from 'lucide-react';
 import Link from 'next/link';
-import { PublicJourneyView } from '@/types';
+import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -34,7 +33,9 @@ import { AppHubScreen } from '@/components/AppHubScreen';
 export default function HomePage() {
   const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
-  const [matches, setMatches] = useState<any[]>([]);
+  const [matches, setMatches] = useState<
+    { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [requestStatusMap, setRequestStatusMap] = useState<Record<string, string>>({});
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -593,7 +594,7 @@ export default function HomePage() {
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
         defaultMobile={user?.mobile}
-        onSuccess={(fbUser) => {
+        onSuccess={() => {
           setShowOtpModal(false);
         }}
       />

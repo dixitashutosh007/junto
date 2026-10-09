@@ -5,17 +5,14 @@ import { useAuth } from '@/context/AuthContext';
 import {
   Building2,
   ChevronDown,
-  User,
   Shield,
   ShieldCheck,
   Car,
   Search,
   Grid,
   Check,
-  Sparkles,
   Layers,
   ArrowRight,
-  ExternalLink,
   LogOut,
 } from 'lucide-react';
 import Link from 'next/link';

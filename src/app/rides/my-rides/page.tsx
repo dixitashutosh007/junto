@@ -4,7 +4,9 @@ import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
 import { formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useApiData } from '@/hooks/useApiData';
+import { RideOccurrence } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
@@ -14,8 +16,6 @@ import {
   Trash2,
   Edit2,
   Users,
-  CheckCircle2,
-  XCircle,
   PlusCircle,
   Save,
   X,
@@ -24,8 +24,6 @@ import Link from 'next/link';
 
 export default function MyRidesPage() {
   const { activePersona } = useAuth();
-  const [rides, setRides] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingRideId, setEditingRideId] = useState<string | null>(null);
 
   // Edit fields
@@ -37,31 +35,23 @@ export default function MyRidesPage() {
   const [message, setMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [loadError, setLoadError] = useState('');
+  const {
+    data,
+    loading,
+    error: loadError,
+    reload: loadMyRides,
+  } = useApiData(
+    '/api/v1/rides?mine=true',
+    (json) =>
+      ((json as { rides: RideOccurrence[] }).rides ?? []).sort((x, y) =>
+        y.departureWindowStart.localeCompare(x.departureWindowStart)
+      ),
+    'Could not load your rides.',
+    activePersona
+  );
+  const rides = data ?? [];
 
-  const loadMyRides = async () => {
-    try {
-      setLoading(true);
-      setLoadError('');
-      const res = await apiFetch('/api/v1/rides?mine=true');
-      if (res.ok) {
-        const data = await res.json();
-        setRides(data.rides || []);
-      } else {
-        setLoadError('Could not load your rides.');
-      }
-    } catch {
-      setLoadError('Connection problem. Check your internet and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMyRides();
-  }, [activePersona]);
-
-  const startEdit = (ride: any) => {
+  const startEdit = (ride: RideOccurrence) => {
     setEditingRideId(ride.id);
     setEditDest(ride.destinationName);
     setEditSeats(ride.totalSeats);
@@ -159,11 +149,11 @@ export default function MyRidesPage() {
       {loading ? (
         <Loading label="Loading your rides…" />
       ) : loadError ? (
-        <LoadError message={loadError} onRetry={() => void loadMyRides()} />
+        <LoadError message={loadError} onRetry={loadMyRides} />
       ) : rides.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Car className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-xs font-semibold text-zinc-700">You haven't offered any rides yet</p>
+          <p className="text-xs font-semibold text-zinc-700">You haven&apos;t offered any rides yet</p>
           <p className="text-[11px] text-zinc-500 mt-1 mb-4">
             Share available seats in your car with co-residents!
           </p>
