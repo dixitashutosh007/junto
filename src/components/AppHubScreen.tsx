@@ -85,7 +85,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
         <div className="mb-6">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold tracking-wider uppercase mb-2">
             <Grid className="w-3.5 h-3.5" />
-            <span>{society?.name || 'Mahaveer Ranches'} Apps</span>
+            <span>{society?.name ?? 'Society'} Apps</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Welcome, {firstName}

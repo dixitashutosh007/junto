@@ -1,14 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User, Society, SocietyMembership, SocietySummary } from '@/types';
+import { apiFetch, getDevPersona, selectSociety, setDevPersona } from '@/lib/api-client';
 
 interface AuthContextType {
   user: User | null;
   society: Society | null;
   societiesList: SocietySummary[];
   membership: SocietyMembership | null;
-  activePersona: string; // 'usr-offerer-001' | 'usr-seeker-001' | 'usr-admin-001' | 'usr-app-admin-001'
+  /** Development only: the demo user requests act as */
+  activePersona: string;
   activeSocietyId: string;
   isAuthenticated: boolean;
   switchPersona: (userId: string) => void;
@@ -24,8 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   society: null,
   societiesList: [],
   membership: null,
-  activePersona: 'usr-offerer-001',
-  activeSocietyId: 'soc-ggh-001',
+  activePersona: '',
+  activeSocietyId: '',
   isAuthenticated: false,
   switchPersona: () => {},
   switchSociety: () => {},
@@ -35,127 +37,122 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
+// Development only: after "Sign out", stop auto-signing in as the demo persona
+const LOGGED_OUT_KEY = 'junto_logged_out';
+
+function readLoggedOutFlag(): boolean {
+  try {
+    return localStorage.getItem(LOGGED_OUT_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+interface SessionState {
+  user: User | null;
+  society: Society | null;
+  membership: SocietyMembership | null;
+  societiesList: SocietySummary[];
+}
+
+const SIGNED_OUT: SessionState = { user: null, society: null, membership: null, societiesList: [] };
+
+async function loadSession(): Promise<SessionState> {
+  const [meRes, societiesRes] = await Promise.all([
+    apiFetch('/api/v1/auth/me'),
+    apiFetch('/api/v1/societies'),
+  ]);
+  if (!meRes.ok) return SIGNED_OUT;
+
+  const me = await meRes.json();
+  const societies = societiesRes.ok ? await societiesRes.json() : { societies: [] };
+  return {
+    user: me.user,
+    society: me.society,
+    membership: me.membership,
+    societiesList: societies.societies ?? [],
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [activePersona, setActivePersona] = useState<string>('usr-offerer-001'); // Ashutosh Dixit default
-  const [activeSocietyId, setActiveSocietyId] = useState<string>('soc-ggh-001');
-  const [user, setUser] = useState<User | null>(null);
-  const [society, setSociety] = useState<Society | null>(null);
-  const [societiesList, setSocietiesList] = useState<SocietySummary[]>([]);
-  const [membership, setMembership] = useState<SocietyMembership | null>(null);
+  const [activePersona, setActivePersona] = useState<string>('');
+  const [session, setSession] = useState<SessionState>(SIGNED_OUT);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const fetchSocieties = async () => {
-    try {
-      const res = await fetch('/api/v1/societies');
-      if (res.ok) {
-        const data = await res.json();
-        setSocietiesList(data.societies || []);
-      }
-    } catch (e) {
-      console.error('Failed to load societies list', e);
+  const refreshAuth = useCallback(async () => {
+    if (process.env.NODE_ENV !== 'production' && readLoggedOutFlag()) {
+      setSession(SIGNED_OUT);
+      setIsLoading(false);
+      return;
     }
-  };
-
-  const fetchAuth = async (personaId: string, societyId: string) => {
     try {
-      setIsLoading(true);
-      const headers: Record<string, string> = {
-        'x-society-id': societyId,
-      };
-
-      // Demo personas exist only in development; production uses the session cookie
-      if (process.env.NODE_ENV !== 'production') {
-        headers['x-dev-user-id'] = personaId;
-      }
-
-      const res = await fetch('/api/v1/auth/me', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        setSociety(data.society);
-        setMembership(data.membership);
-      } else {
-        setUser(null);
-        setMembership(null);
-      }
+      setSession(await loadSession());
     } catch (e) {
       console.error('Failed to load user', e);
-      setUser(null);
-      setMembership(null);
+      setSession(SIGNED_OUT);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchSocieties();
   }, []);
 
   useEffect(() => {
-    fetchAuth(activePersona, activeSocietyId);
-  }, [activePersona, activeSocietyId]);
+    // Initial load once mounted (browser APIs are needed for the dev persona)
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      if (process.env.NODE_ENV !== 'production') setActivePersona(getDevPersona());
+      return refreshAuth();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshAuth]);
 
   const switchPersona = (userId: string) => {
+    setDevPersona(userId);
     setActivePersona(userId);
+    void refreshAuth();
   };
 
   const switchSociety = (societyId: string) => {
-    setActiveSocietyId(societyId);
+    selectSociety(societyId);
+    // Reload so every screen refetches its data for the new society
+    window.location.reload();
   };
 
   const updateCommuteIntent = async (intent: 'OFFERER' | 'SEEKER' | 'BOTH') => {
-    if (!user) return;
-    setUser({ ...user, commuteIntent: intent });
-    // In production, syncs to DB/API
+    if (!session.user) return;
+    const res = await apiFetch('/api/v1/auth/me', { method: 'PUT', json: { commuteIntent: intent } });
+    if (res.ok) {
+      const data = await res.json();
+      setSession((s) => ({ ...s, user: data.user }));
+    }
   };
-
-  const refreshAuth = async () => {
-    await fetchAuth(activePersona, activeSocietyId);
-  };
-
-  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(false);
-
-  // In demo/localhost without active cookie, user can be simulated or logged out
-  const isAuthenticated = !isLoggedOut && Boolean(user);
 
   const logout = async () => {
     try {
-      await fetch('/api/v1/auth/session', { method: 'DELETE' });
+      await apiFetch('/api/v1/auth/session', { method: 'DELETE' });
     } catch (e) {
-      console.warn('Logout fetch note:', e);
+      console.warn('Logout request failed:', e);
     }
-    setUser(null);
-    setMembership(null);
-    setIsLoggedOut(true);
-    localStorage.setItem('societyapps_logged_out', 'true');
-  };
-
-  const loginSuccess = () => {
-    setIsLoggedOut(false);
-    localStorage.removeItem('societyapps_logged_out');
-    fetchAuth(activePersona, activeSocietyId);
-  };
-
-  useEffect(() => {
-    const loggedOut = localStorage.getItem('societyapps_logged_out') === 'true';
-    if (loggedOut) {
-      setIsLoggedOut(true);
-      setUser(null);
-      setMembership(null);
-      setIsLoading(false);
+    try {
+      localStorage.setItem(LOGGED_OUT_KEY, 'true');
+    } catch {
+      // ignore
     }
-  }, []);
+    setSession(SIGNED_OUT);
+  };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        society,
-        societiesList,
-        membership,
+        user: session.user,
+        society: session.society,
+        societiesList: session.societiesList,
+        membership: session.membership,
         activePersona,
-        activeSocietyId,
-        isAuthenticated,
+        activeSocietyId: session.society?.id ?? '',
+        isAuthenticated: Boolean(session.user),
         switchPersona,
         switchSociety,
         updateCommuteIntent,
@@ -167,6 +164,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+/** Clears the development "signed out" flag after a successful sign-in */
+export function clearLoggedOutFlag(): void {
+  try {
+    localStorage.removeItem(LOGGED_OUT_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export function useAuth() {

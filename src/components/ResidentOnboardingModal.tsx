@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -100,7 +101,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
 
       // 1. If Offerer, register vehicle first
       if (commuteRole === 'OFFERER') {
-        const vehRes = await fetch('/api/v1/user/vehicles', {
+        const vehRes = await apiFetch('/api/v1/user/vehicles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -120,7 +121,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
       }
 
       // 2. Save profile updates and mark profile completed
-      const profileRes = await fetch('/api/v1/auth/me', {
+      const profileRes = await apiFetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -161,7 +162,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               <Building2 className="w-4 h-4" />
             </span>
             <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-400">
-              {society?.name || 'Mahaveer Ranches'} Resident Verification
+              {society?.name ?? 'Society'} Resident Verification
             </span>
           </div>
           <h2 className="text-lg font-extrabold text-white">Complete Your Resident Profile</h2>

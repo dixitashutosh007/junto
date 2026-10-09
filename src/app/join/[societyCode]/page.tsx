@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { Suspense, use, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Building, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -60,7 +61,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
     setError('');
 
     try {
-      const res = await fetch('/api/v1/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,7 +98,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-zinc-900">Join Green Glen Heights</h1>
+          <h1 className="text-lg font-bold text-zinc-900">Join your society</h1>
           <p className="text-xs text-zinc-500">Official Society Invitation</p>
         </div>
       </div>

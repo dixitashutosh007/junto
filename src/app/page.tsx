@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import { formatIstTime, istDateString } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -46,24 +47,17 @@ export default function HomePage() {
       try {
         setLoading(true);
         // Load available rides
-        const res = await fetch('/api/v1/rides', {
-          headers: {
-            'x-dev-user-id': activePersona,
-            'x-society-id': 'soc-ggh-001',
-          },
-        });
+        const res = await apiFetch('/api/v1/rides');
         if (res.ok) {
           const data = await res.json();
           setRides(data.rides || []);
         }
 
         // Load automated matches for user commute
-        const matchRes = await fetch('/api/v1/rides/matches', {
+        const matchRes = await apiFetch('/api/v1/rides/matches', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-dev-user-id': activePersona,
-            'x-society-id': 'soc-ggh-001',
           },
           body: JSON.stringify({
             dropoffName: 'Manyata Tech Park',
@@ -86,12 +80,10 @@ export default function HomePage() {
 
   const handleRequestRide = async (journeyId: string) => {
     try {
-      const res = await fetch('/api/v1/rides/requests', {
+      const res = await apiFetch('/api/v1/rides/requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           journeyId,
@@ -157,7 +149,7 @@ export default function HomePage() {
               Your Account is Not Yet Validated
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              Your resident application for <span className="font-bold text-slate-800">{society?.name || 'Mahaveer Ranches'}</span> (Flat <span className="font-bold text-slate-800">{membership?.flatNumber || 'Submitted'}</span>) is pending review by the Society Management Committee.
+              Your resident application for <span className="font-bold text-slate-800">{society?.name ?? 'your society'}</span> (Flat <span className="font-bold text-slate-800">{membership?.flatNumber || 'Submitted'}</span>) is pending review by the Society Management Committee.
             </p>
           </div>
 

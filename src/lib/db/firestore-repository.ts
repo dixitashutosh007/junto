@@ -165,6 +165,12 @@ export class FirestoreRepository implements ISocietyRepository {
     return doc.data() as SocietyMembership;
   }
 
+  async listUserMemberships(userId: string): Promise<SocietyMembership[]> {
+    // Collection-group query; needs the members.userId override in firestore.indexes.json
+    const snap = await this.db.collectionGroup('members').where('userId', '==', userId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as SocietyMembership);
+  }
+
   async createMembership(membership: SocietyMembership): Promise<SocietyMembership> {
     await this.db
       .collection('societies')

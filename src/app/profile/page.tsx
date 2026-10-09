@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -94,12 +95,7 @@ export default function ProfilePage() {
   // Load vehicles
   const loadVehicles = async () => {
     try {
-      const res = await fetch('/api/v1/user/vehicles', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/user/vehicles');
       if (res.ok) {
         const data = await res.json();
         setVehicles(data.vehicles || []);
@@ -129,12 +125,10 @@ export default function ProfilePage() {
 
     try {
       setSaving(true);
-      const res = await fetch('/api/v1/auth/me', {
+      const res = await apiFetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           fullName,
@@ -175,12 +169,10 @@ export default function ProfilePage() {
     }
 
     try {
-      const res = await fetch('/api/v1/user/vehicles', {
+      const res = await apiFetch('/api/v1/user/vehicles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           type: newVehType,
@@ -278,12 +270,10 @@ export default function ProfilePage() {
         throw new Error('Please request a new verification code.');
       }
 
-      const res = await fetch('/api/v1/auth/phone', {
+      const res = await apiFetch('/api/v1/auth/phone', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify(body),
       });
@@ -324,12 +314,10 @@ export default function ProfilePage() {
 
     try {
       setVerifyingEmail(true);
-      const res = await fetch('/api/v1/auth/me', {
+      const res = await apiFetch('/api/v1/auth/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({ email: newEmail }),
       });
@@ -368,7 +356,7 @@ export default function ProfilePage() {
         </Link>
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Resident Profile</h1>
-          <p className="text-xs text-slate-500 font-medium">{society?.name || 'Mahaveer Ranches'}</p>
+          <p className="text-xs text-slate-500 font-medium">{society?.name}</p>
         </div>
       </div>
 

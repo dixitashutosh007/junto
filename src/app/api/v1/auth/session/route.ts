@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { errorResponse } from '@/lib/api-auth';
+import { errorResponse, preferredMembership } from '@/lib/api-auth';
 import {
   LEGACY_COOKIES,
   SESSION_COOKIE,
@@ -14,9 +14,6 @@ import {
 import { clientIp, rateLimit } from '@/lib/rate-limit';
 import { CreateSessionSchema } from '@/lib/validation/schemas';
 import { User } from '@/types';
-
-// Default society until multi-society support lands (roadmap task 4.1)
-const DEFAULT_SOCIETY_ID = 'soc-ggh-001';
 
 /**
  * Exchanges a Firebase ID token from a fresh phone OTP sign-in for a
@@ -45,10 +42,9 @@ export async function POST(req: NextRequest) {
   try {
     const repo = getRepository();
 
-    const society = societyCode
-      ? await repo.getSocietyByCode(societyCode)
-      : await repo.getSocietyById(DEFAULT_SOCIETY_ID);
-    if (!society || society.status !== 'ACTIVE') {
+    // Joining by invite link names the society; otherwise use an existing membership
+    const invitedSociety = societyCode ? await repo.getSocietyByCode(societyCode) : null;
+    if (societyCode && (!invitedSociety || invitedSociety.status !== 'ACTIVE')) {
       return errorResponse('Invalid or inactive society invitation code', 404);
     }
 
@@ -69,6 +65,18 @@ export async function POST(req: NextRequest) {
         user = await repo.updateUser(byPhone.id, { firebaseUid: identity.uid });
       }
     }
+
+    const existingMembership = user && !invitedSociety
+      ? preferredMembership(await repo.listUserMemberships(user.id))
+      : null;
+    if (!invitedSociety && !existingMembership) {
+      return errorResponse(
+        "We couldn't find your society. Please use the invite link from your society to join.",
+        404
+      );
+    }
+    const society = invitedSociety ?? (await repo.getSocietyById(existingMembership!.societyId));
+    if (!society) return errorResponse('Society not found', 404);
 
     if (!user) {
       // Initial user stub awaiting resident onboarding

@@ -69,10 +69,60 @@ describe('POST /api/v1/auth/session (production)', () => {
     expect(setCookie).toMatch(/Secure/i);
   });
 
-  it('creates a pending user for a new phone number', async () => {
+  it('asks a new phone number without an invite code to use the invite link', async () => {
     registerIdToken('new', { uid: 'firebase-new', phone_number: '+919700000001' });
 
     const res = await login('new');
+    expect(res.status).toBe(404);
+    expect(await repo.getUserById('firebase-new')).toBeNull();
+  });
+
+  it("signs an existing resident into their own society when no code is given", async () => {
+    await repo.createSociety({
+      id: 'soc-other-002',
+      slug: 'palm-meadows',
+      name: 'Palm Meadows',
+      code: 'PALM2024',
+      address: 'Whitefield',
+      latitude: 12.9698,
+      longitude: 77.7499,
+      settings: { max_detour_minutes: 10, require_admin_approval: true, allow_gender_preferences: true },
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    });
+    // A resident who only belongs to the second society
+    await repo.createUser({
+      id: 'usr-palm',
+      cognitoSub: 'x',
+      email: 'palm@example.com',
+      mobile: '+919700000009',
+      fullName: 'Palm Resident',
+      gender: 'FEMALE',
+      createdAt: new Date().toISOString(),
+    });
+    await repo.createMembership({
+      id: 'mem-palm',
+      societyId: 'soc-other-002',
+      userId: 'usr-palm',
+      flatNumber: 'P-1',
+      role: 'RESIDENT',
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    registerIdToken('palm', { uid: 'firebase-palm', phone_number: '+919700000009' });
+
+    const res = await login('palm');
+    expect(res.status).toBe(200);
+    expect((await res.json()).societyId).toBe('soc-other-002');
+    expect(res.headers.get('set-cookie')).toContain('junto_society_id=soc-other-002');
+    expect(await repo.getMembership('soc-ggh-001', 'usr-palm')).toBeNull();
+  });
+
+  it('creates a pending user for a new phone number joining by invite code', async () => {
+    registerIdToken('new', { uid: 'firebase-new', phone_number: '+919700000001' });
+
+    const res = await login('new', { societyCode: 'MR2024' });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.user.id).toBe('firebase-new');

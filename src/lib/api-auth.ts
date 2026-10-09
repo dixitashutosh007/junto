@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { AdminPermissions, MembershipRole, MembershipStatus, User } from '@/types';
+import { AdminPermissions, MembershipRole, MembershipStatus, SocietyMembership, User } from '@/types';
 import {
   SESSION_COOKIE,
   SOCIETY_COOKIE,
@@ -17,9 +17,6 @@ export interface AuthContext {
   status: MembershipStatus;
   permissions?: AdminPermissions;
 }
-
-// Default society until multi-society support lands (roadmap task 4.1)
-const DEFAULT_SOCIETY_ID = 'soc-ggh-001';
 
 // Membership statuses allowed to use onboarding routes (profile, vehicles)
 export const ONBOARDING_STATUSES: MembershipStatus[] = ['ACTIVE', 'PENDING_APPROVAL', 'REGISTERED'];
@@ -51,18 +48,45 @@ export async function getSessionUser(
   return { user, authUid };
 }
 
+// Order in which a user's societies are picked when none is selected
+const STATUS_PREFERENCE: MembershipStatus[] = [
+  'ACTIVE',
+  'PENDING_APPROVAL',
+  'REGISTERED',
+  'INVITED',
+  'SUSPENDED',
+  'REJECTED',
+  'DEACTIVATED',
+];
+
 /**
- * Validates the session and resolves the membership in the requested society.
- * Returns null if the user is not signed in or not a member of that society.
+ * The membership to use when the user hasn't picked a society (or picked one
+ * they don't belong to): their active one first, then pending ones.
+ */
+export function preferredMembership(memberships: SocietyMembership[]): SocietyMembership | null {
+  return (
+    [...memberships].sort(
+      (a, b) => STATUS_PREFERENCE.indexOf(a.status) - STATUS_PREFERENCE.indexOf(b.status)
+    )[0] ?? null
+  );
+}
+
+/**
+ * Validates the session and resolves the membership in the selected society
+ * (`x-society-id` header, else the `junto_society_id` cookie), falling back to
+ * the user's own preferred membership. Returns null if the user is not signed
+ * in or belongs to no society.
  */
 export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
   const session = await getSessionUser(req);
   if (!session) return null;
 
-  const societyId =
-    req.headers.get('x-society-id') || req.cookies.get(SOCIETY_COOKIE)?.value || DEFAULT_SOCIETY_ID;
+  const repo = getRepository();
+  const requestedSocietyId = req.headers.get('x-society-id') || req.cookies.get(SOCIETY_COOKIE)?.value;
 
-  const membership = await getRepository().getMembership(societyId, session.user.id);
+  const membership =
+    (requestedSocietyId ? await repo.getMembership(requestedSocietyId, session.user.id) : null) ??
+    preferredMembership(await repo.listUserMemberships(session.user.id));
   if (!membership) return null;
 
   return {

@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -17,12 +18,10 @@ export default function ReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/v1/moderation/reports', {
+      const res = await apiFetch('/api/v1/moderation/reports', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           reportedUserId: 'usr-offerer-001',

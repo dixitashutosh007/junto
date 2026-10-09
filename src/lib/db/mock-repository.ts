@@ -143,6 +143,7 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919811122233',
       fullName: 'Ashutosh Dixit',
       gender: 'MALE',
+      commuteIntent: 'OFFERER',
       workLocationName: 'Manyata Tech Park, Hebbal',
       workLatitude: 13.0500,
       workLongitude: 77.6200,
@@ -186,6 +187,7 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919822233344',
       fullName: 'Priya Sharma',
       gender: 'FEMALE',
+      commuteIntent: 'SEEKER',
       workLocationName: 'Bagmane Tech Park, CV Raman Nagar',
       workLatitude: 12.9800,
       workLongitude: 77.6600,
@@ -213,6 +215,7 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919844455566',
       fullName: 'Rohan Gupta',
       gender: 'MALE',
+      commuteIntent: 'OFFERER',
       workLocationName: 'EcoSpace, Bellandur Outer Ring Road',
       workLatitude: 12.9260,
       workLongitude: 77.6762,
@@ -255,6 +258,7 @@ export class MockDynamoRepository implements ISocietyRepository {
       mobile: '+919855566677',
       fullName: 'Ananya Sen',
       gender: 'FEMALE',
+      commuteIntent: 'BOTH',
       workLocationName: 'ITPL, Whitefield',
       workLatitude: 12.9856,
       workLongitude: 77.7314,
@@ -631,6 +635,10 @@ export class MockDynamoRepository implements ISocietyRepository {
 
   async getMembership(societyId: string, userId: string): Promise<SocietyMembership | null> {
     return this.memberships.get(`${societyId}#${userId}`) || null;
+  }
+
+  async listUserMemberships(userId: string): Promise<SocietyMembership[]> {
+    return [...this.memberships.values()].filter((m) => m.userId === userId);
   }
 
   async createMembership(membership: SocietyMembership): Promise<SocietyMembership> {

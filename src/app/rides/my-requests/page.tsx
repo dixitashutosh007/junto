@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -24,12 +25,7 @@ export default function MyRequestsPage() {
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/rides/requests', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/rides/requests');
       if (res.ok) {
         const data = await res.json();
         setRequests(data.requests || []);
@@ -48,12 +44,8 @@ export default function MyRequestsPage() {
   const handleCancelRequest = async (requestId: string) => {
     if (!confirm('Are you sure you want to cancel this ride request?')) return;
     try {
-      const res = await fetch(`/api/v1/rides/requests?requestId=${requestId}`, {
+      const res = await apiFetch(`/api/v1/rides/requests?requestId=${requestId}`, {
         method: 'DELETE',
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
       });
       if (res.ok) {
         setMessage('Seat request cancelled successfully.');

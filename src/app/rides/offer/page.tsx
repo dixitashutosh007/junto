@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Car, Clock, MapPin, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -11,7 +12,7 @@ import { PlaceSuggestion } from '@/lib/services/places-data';
 import { istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
-  const { user, activePersona } = useAuth();
+  const { user, activePersona, society } = useAuth();
   const router = useRouter();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -41,12 +42,7 @@ export default function OfferRidePage() {
     setJourneyDate(days[1].dateStr);
 
     async function loadVehicles() {
-      const res = await fetch('/api/v1/user/vehicles', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/user/vehicles');
       if (res.ok) {
         const data = await res.json();
         setVehicles(data.vehicles || []);
@@ -76,12 +72,10 @@ export default function OfferRidePage() {
     const dateStr = journeyDate || next7Days[0]?.dateStr;
 
     try {
-      const res = await fetch('/api/v1/rides', {
+      const res = await apiFetch('/api/v1/rides', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           vehicleId: selectedVehicleId,
@@ -148,7 +142,7 @@ export default function OfferRidePage() {
             </label>
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
               <MapPin className="w-4 h-4 text-emerald-600" />
-              <span>Mahaveer Ranches (Main Clubhouse Gate)</span>
+              <span>{society?.name ?? 'Your society'}</span>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { UserCheck, CheckCircle2, Clock, MapPin, ArrowLeft, Check, X, Phone, Home } from 'lucide-react';
@@ -16,12 +17,7 @@ export default function RideRequestsManagePage() {
     try {
       setLoading(true);
       // Hardcoded journey for demo: jrn-001
-      const res = await fetch('/api/v1/rides/requests?journeyId=jrn-001', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/rides/requests?journeyId=jrn-001');
       // In demo fallback: display active pending or accepted request
       setRequests([
         {
@@ -51,12 +47,10 @@ export default function RideRequestsManagePage() {
 
   const handleAction = async (requestId: string, action: 'ACCEPT' | 'REJECT') => {
     try {
-      const res = await fetch('/api/v1/rides/requests', {
+      const res = await apiFetch('/api/v1/rides/requests', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           requestId,

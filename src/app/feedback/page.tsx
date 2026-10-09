@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowLeft, CheckCircle2, MessageSquare, ThumbsUp, Heart, Smile } from 'lucide-react';
@@ -35,12 +36,10 @@ export default function QualitativeFeedbackPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/v1/rides/feedback', {
+      const res = await apiFetch('/api/v1/rides/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           journeyId: 'jrn-001',

@@ -9,18 +9,18 @@ export async function GET(req: NextRequest) {
   if (!session) return errorResponse('Unauthorized', 401);
 
   const repo = getRepository();
-  const societies = await repo.listSocieties();
-
-  const memberships = await Promise.all(
-    societies.map((s) => repo.getMembership(s.id, session.user.id))
+  const memberships = (await repo.listUserMemberships(session.user.id)).filter(
+    (m) => m.status !== 'REJECTED' && m.status !== 'DEACTIVATED'
   );
 
-  const mine: SocietySummary[] = societies
-    .filter((_, i) => {
-      const status = memberships[i]?.status;
-      return status !== undefined && status !== 'REJECTED' && status !== 'DEACTIVATED';
-    })
-    .map(({ id, slug, name, address }) => ({ id, slug, name, address }));
+  const societies: SocietySummary[] = [];
+  for (const m of memberships) {
+    const society = await repo.getSocietyById(m.societyId);
+    if (society) {
+      const { id, slug, name, address } = society;
+      societies.push({ id, slug, name, address });
+    }
+  }
 
-  return NextResponse.json({ societies: mine });
+  return NextResponse.json({ societies });
 }

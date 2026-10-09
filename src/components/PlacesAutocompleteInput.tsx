@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, X, Loader2 } from 'lucide-react';
 import { PlaceSuggestion } from '@/lib/services/places-data';
@@ -42,7 +43,7 @@ export function PlacesAutocompleteInput({
   const fetchSuggestions = async (searchQuery: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/v1/places/autocomplete?q=${encodeURIComponent(searchQuery)}`);
+      const res = await apiFetch(`/api/v1/places/autocomplete?q=${encodeURIComponent(searchQuery)}`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data.suggestions || []);
@@ -79,7 +80,7 @@ export function PlacesAutocompleteInput({
 
     // Resolve exact geocode details
     try {
-      const res = await fetch(`/api/v1/places/autocomplete?placeId=${encodeURIComponent(item.placeId)}`);
+      const res = await apiFetch(`/api/v1/places/autocomplete?placeId=${encodeURIComponent(item.placeId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.location) {

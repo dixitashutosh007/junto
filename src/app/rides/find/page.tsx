@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +10,7 @@ import { PublicJourneyView } from '@/types';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 
 export default function FindRidePage() {
-  const { activePersona } = useAuth();
+  const { society } = useAuth();
   const [destination, setDestination] = useState('Manyata Tech Park');
   const [time, setTime] = useState('08:15');
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
@@ -31,12 +32,7 @@ export default function FindRidePage() {
     setSearched(true);
     const dateQuery = (filterDate !== undefined ? filterDate : selectedDate) === 'ALL' ? '' : `?date=${filterDate || selectedDate}`;
     try {
-      const res = await fetch(`/api/v1/rides${dateQuery}`, {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch(`/api/v1/rides${dateQuery}`);
       if (res.ok) {
         const data = await res.json();
         setRides(data.rides || []);
@@ -50,12 +46,10 @@ export default function FindRidePage() {
 
   const handleRequestSeat = async (journeyId: string) => {
     try {
-      const res = await fetch('/api/v1/rides/requests', {
+      const res = await apiFetch('/api/v1/rides/requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           journeyId,
@@ -92,7 +86,7 @@ export default function FindRidePage() {
           <label className="text-[11px] font-semibold text-zinc-600 block mb-1">Origin</label>
           <div className="flex items-center gap-2 p-2.5 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-800">
             <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-medium">Mahaveer Ranches (Main Clubhouse Gate)</span>
+            <span className="font-medium">{society?.name ?? 'Your society'}</span>
           </div>
         </div>
 

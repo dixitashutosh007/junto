@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import { formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -37,12 +38,7 @@ export default function MyRidesPage() {
   const loadMyRides = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/rides?mine=true', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/rides?mine=true');
       if (res.ok) {
         const data = await res.json();
         setRides(data.rides || []);
@@ -69,12 +65,10 @@ export default function MyRidesPage() {
   const handleSaveEdit = async (rideId: string, journeyDate: string) => {
     setIsSaving(true);
     try {
-      const res = await fetch('/api/v1/rides', {
+      const res = await apiFetch('/api/v1/rides', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           journeyId: rideId,
@@ -104,12 +98,8 @@ export default function MyRidesPage() {
   const handleDelete = async (journeyId: string) => {
     if (!confirm('Cancel this ride? Residents who requested or booked seats will be notified.')) return;
     try {
-      const res = await fetch(`/api/v1/rides?journeyId=${journeyId}`, {
+      const res = await apiFetch(`/api/v1/rides?journeyId=${journeyId}`, {
         method: 'DELETE',
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
       });
       if (res.ok) {
         setMessage('Ride cancelled. Passengers have been notified.');

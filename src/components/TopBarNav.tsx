@@ -167,7 +167,7 @@ export function TopBarNav() {
                   Society
                 </span>
                 <span className="text-xs font-bold truncate max-w-[110px] leading-tight mt-0.5 text-slate-800">
-                  {society?.name || 'Mahaveer Ranches'}
+                  {society?.name ?? 'Select society'}
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
@@ -353,7 +353,7 @@ export function TopBarNav() {
             </div>
 
             <p className="text-xs text-zinc-500 mt-2 mb-4">
-              Integrated residential applications for {society?.name || 'Mahaveer Ranches'}.
+              Integrated residential applications for {society?.name ?? 'your society'}.
             </p>
 
             <div className="grid grid-cols-2 gap-3">

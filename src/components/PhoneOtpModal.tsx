@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase/config';
@@ -13,6 +14,7 @@ import {
 } from '@/lib/firebase/phone';
 import { Phone, KeyRound, AlertCircle, Loader2 } from 'lucide-react';
 import { User } from '@/types';
+import { clearLoggedOutFlag } from '@/context/AuthContext';
 
 const RECAPTCHA_CONTAINER_ID = 'recaptcha-container';
 
@@ -118,7 +120,7 @@ export function PhoneOtpModal({
       }
 
       // Establish session with server
-      const sessionRes = await fetch('/api/v1/auth/session', {
+      const sessionRes = await apiFetch('/api/v1/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, societyCode }),
@@ -129,6 +131,7 @@ export function PhoneOtpModal({
         throw new Error(sessionData.error || 'Failed to create server session');
       }
 
+      clearLoggedOutFlag();
       onSuccess(sessionData.user);
       onClose();
       if (!skipReload) window.location.reload(); // Refresh session state

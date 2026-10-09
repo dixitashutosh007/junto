@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -27,12 +28,7 @@ export function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/notifications', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);
@@ -53,12 +49,10 @@ export function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await fetch('/api/v1/notifications', {
+      await apiFetch('/api/v1/notifications', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({ markAll: true }),
       });

@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -27,7 +28,7 @@ import Link from 'next/link';
 
 export default function AdminPage() {
   const { activePersona, society, refreshAuth, membership } = useAuth();
-  const isSuperAdmin = membership?.role === 'SUPER_ADMIN' || activePersona === 'usr-app-admin-001';
+  const isSuperAdmin = membership?.role === 'SUPER_ADMIN';
 
   // Tab State: 'MEMBERS' | 'MODERATION' | 'ACTIVITY_LOGS' | 'RBAC' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'
   const [activeTab, setActiveTab] = useState<'MEMBERS' | 'MODERATION' | 'ACTIVITY_LOGS' | 'RBAC' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS'>('MEMBERS');
@@ -59,7 +60,7 @@ export default function AdminPage() {
   const [resolutionText, setResolutionText] = useState('');
 
   // Society Details State
-  const [societyName, setSocietyName] = useState(society?.name || 'Mahaveer Ranches');
+  const [societyName, setSocietyName] = useState(society?.name ?? '');
   const [societyAddress, setSocietyAddress] = useState(
     society?.address || 'Hosa Road, Off Hosur Road, Electronic City Post, Bangalore, Karnataka 560100'
   );
@@ -95,24 +96,14 @@ export default function AdminPage() {
     try {
       setLoadingMembers(true);
       // Pending
-      const resPending = await fetch('/api/v1/admin/residents', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const resPending = await apiFetch('/api/v1/admin/residents');
       if (resPending.ok) {
         const data = await resPending.json();
         setPendingMembers(data.pending || []);
       }
 
       // All Members
-      const resAll = await fetch('/api/v1/admin/residents?all=true', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const resAll = await apiFetch('/api/v1/admin/residents?all=true');
       if (resAll.ok) {
         const dataAll = await resAll.json();
         setAllMembers(dataAll.members || []);
@@ -127,12 +118,7 @@ export default function AdminPage() {
   const loadReports = async () => {
     try {
       setLoadingReports(true);
-      const res = await fetch('/api/v1/moderation/reports', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/moderation/reports');
       if (res.ok) {
         const data = await res.json();
         setReports(data.reports || []);
@@ -150,12 +136,7 @@ export default function AdminPage() {
   const loadAuditLogs = async () => {
     try {
       setLoadingLogs(true);
-      const res = await fetch('/api/v1/admin/audit-logs', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
-        },
-      });
+      const res = await apiFetch('/api/v1/admin/audit-logs');
       if (res.ok) {
         const data = await res.json();
         setAuditLogs(data.events || []);
@@ -170,12 +151,10 @@ export default function AdminPage() {
   const handleSaveRbac = async (targetUserId: string) => {
     try {
       setIsSaving(true);
-      const res = await fetch('/api/v1/admin/rbac', {
+      const res = await apiFetch('/api/v1/admin/rbac', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           targetUserId,
@@ -220,12 +199,10 @@ export default function AdminPage() {
   // Handle Moderation Action (RESOLVE | DISMISS)
   const handleReportAction = async (reportId: string, status: 'RESOLVED' | 'DISMISSED', notes: string) => {
     try {
-      const res = await fetch('/api/v1/moderation/reports', {
+      const res = await apiFetch('/api/v1/moderation/reports', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           reportId,
@@ -248,12 +225,10 @@ export default function AdminPage() {
   // Handle Member Lifecycle Action: APPROVE | REJECT | BLOCK | REACTIVATE
   const handleMemberAction = async (targetUserId: string, action: string) => {
     try {
-      const res = await fetch('/api/v1/admin/residents', {
+      const res = await apiFetch('/api/v1/admin/residents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           targetUserId,
@@ -275,12 +250,10 @@ export default function AdminPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const res = await fetch('/api/v1/admin/settings', {
+      const res = await apiFetch('/api/v1/admin/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': 'soc-ggh-001',
         },
         body: JSON.stringify({
           name: societyName,

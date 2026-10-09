@@ -8,15 +8,15 @@ import { useAuth } from '@/context/AuthContext';
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { membership, isAuthenticated, activePersona } = useAuth();
+  const { membership, isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
     return null;
   }
 
   const role = membership?.role || 'RESIDENT';
-  const isSocietyAdmin = role === 'SOCIETY_ADMIN' || activePersona === 'usr-admin-001';
-  const isAppAdmin = role === 'SUPER_ADMIN' || activePersona === 'usr-app-admin-001';
+  const isSocietyAdmin = role === 'SOCIETY_ADMIN';
+  const isAppAdmin = role === 'SUPER_ADMIN';
 
   let navItems = [];
 
@@ -28,7 +28,15 @@ export function BottomNav() {
       { label: 'Moderation', href: '/admin?tab=MODERATION', icon: ShieldAlert },
       { label: 'Profile', href: '/profile', icon: User },
     ];
-  } else if (activePersona === 'usr-offerer-001') {
+  } else if (user?.commuteIntent === 'BOTH') {
+    // Residents who both offer and take rides
+    navItems = [
+      { label: 'Home', href: '/', icon: Home },
+      { label: 'Find Ride', href: '/rides/find', icon: Search },
+      { label: 'Offer Ride', href: '/rides/offer', icon: Car },
+      { label: 'Profile', href: '/profile', icon: User },
+    ];
+  } else if (user?.commuteIntent === 'OFFERER') {
     // Offerer View
     navItems = [
       { label: 'Home', href: '/', icon: Home },
