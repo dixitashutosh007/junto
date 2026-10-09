@@ -160,7 +160,7 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
             <button
               type="submit"
               disabled={busy}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
+              className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Sending" /> : 'Send code'}
             </button>
@@ -199,7 +199,7 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
             <button
               type="submit"
               disabled={busy}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1"
+              className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Verifying" /> : 'Verify & Save'}
             </button>

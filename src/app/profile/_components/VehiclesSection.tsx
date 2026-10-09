@@ -94,7 +94,7 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
 
       {vehicles.length === 0 ? (
         <div className="p-3.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center">
-          <Car className="w-6 h-6 text-slate-400 mx-auto mb-1" aria-hidden="true" />
+          <Car className="w-6 h-6 text-slate-500 mx-auto mb-1" aria-hidden="true" />
           <p className="text-xs font-bold text-slate-700">No vehicles added</p>
           <p className="text-[10px] text-slate-500 mt-0.5">Add your car or bike to offer rides to fellow residents.</p>
         </div>
@@ -224,7 +224,7 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
               type="button"
               onClick={addVehicle}
               disabled={saving}
-              className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-2xs disabled:opacity-60"
+              className="flex-1 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 shadow-2xs disabled:opacity-60"
             >
               {saving ? 'Saving…' : 'Save Vehicle'}
             </button>

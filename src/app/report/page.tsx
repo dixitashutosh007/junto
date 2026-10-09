@@ -50,9 +50,10 @@ function ReportForm() {
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Report an Issue</h1>

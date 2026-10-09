@@ -1,6 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { Loading, LoadError } from '@/components/ui/LoadState';
+import { ConfirmDialog } from '@/components/ui/Dialog';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -22,16 +24,21 @@ export default function MyRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
+  const [loadError, setLoadError] = useState('');
+
   const loadRequests = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const res = await apiFetch('/api/v1/rides/requests');
       if (res.ok) {
         const data = await res.json();
         setRequests(data.requests || []);
+      } else {
+        setLoadError('Could not load your requests.');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setLoadError('Connection problem. Check your internet and try again.');
     } finally {
       setLoading(false);
     }
@@ -41,8 +48,9 @@ export default function MyRequestsPage() {
     loadRequests();
   }, [activePersona]);
 
+  const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
+
   const handleCancelRequest = async (requestId: string) => {
-    if (!confirm('Are you sure you want to cancel this ride request?')) return;
     try {
       const res = await apiFetch(`/api/v1/rides/requests?requestId=${requestId}`, {
         method: 'DELETE',
@@ -63,9 +71,10 @@ export default function MyRequestsPage() {
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">My Ride Requests</h1>
@@ -80,7 +89,9 @@ export default function MyRequestsPage() {
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-zinc-400">Loading your requests...</div>
+        <Loading label="Loading your requests…" />
+      ) : loadError ? (
+        <LoadError message={loadError} onRetry={() => void loadRequests()} />
       ) : requests.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
@@ -134,7 +145,7 @@ export default function MyRequestsPage() {
                     <span>Dropoff: {req.dropoffName}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-zinc-500">
-                    <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                    <Clock className="w-3.5 h-3.5 text-zinc-500" />
                     <span>Pickup: {req.pickupName}</span>
                   </div>
                 </div>
@@ -187,7 +198,7 @@ export default function MyRequestsPage() {
                       <span />
                     )}
                     <button
-                      onClick={() => handleCancelRequest(req.id)}
+                      onClick={() => setConfirmCancelRequestId(req.id)}
                       className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -200,6 +211,20 @@ export default function MyRequestsPage() {
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmCancelRequestId !== null}
+        title="Cancel this request?"
+        description="If the driver already accepted, your seat is released and they are notified."
+        confirmLabel="Cancel request"
+        cancelLabel="Keep request"
+        destructive
+        onCancel={() => setConfirmCancelRequestId(null)}
+        onConfirm={() => {
+          const id = confirmCancelRequestId;
+          setConfirmCancelRequestId(null);
+          if (id) void handleCancelRequest(id);
+        }}
+      />
     </div>
   );
 }

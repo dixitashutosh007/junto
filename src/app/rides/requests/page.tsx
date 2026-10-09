@@ -275,7 +275,7 @@ function RideRequestsManager() {
                           <button
                             onClick={() => handleAction(req.id, 'ACCEPT')}
                             disabled={isBusy || ride.availableSeats < req.requestedSeats}
-                            className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1 shadow-xs disabled:opacity-50"
+                            className="px-4 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 flex items-center gap-1 shadow-xs disabled:opacity-50"
                           >
                             {isBusy ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />

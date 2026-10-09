@@ -7,19 +7,10 @@ export function useNotifications() {
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
+    // The service worker itself is registered by <ServiceWorkerRegistration />
     if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
       setIsSupported(true);
       setPermission(Notification.permission);
-
-      // Register service worker if not already registered
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('ServiceWorker registered with scope:', registration.scope);
-        })
-        .catch((err) => {
-          console.warn('ServiceWorker registration error:', err);
-        });
     }
   }, []);
 

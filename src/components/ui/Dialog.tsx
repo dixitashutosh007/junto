@@ -92,7 +92,7 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold ${
-            destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
+            destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-700 hover:bg-emerald-800'
           }`}
         >
           {confirmLabel}

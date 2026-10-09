@@ -65,7 +65,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                 onClick={() => setStatusFilter(st)}
                 aria-pressed={statusFilter === st}
                 className={`text-[11px] px-2.5 py-0.5 rounded-md font-medium transition-colors ${
-                  statusFilter === st ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  statusFilter === st ? 'bg-emerald-700 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
                 }`}
               >
                 {FILTER_LABELS[st]}
@@ -109,7 +109,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                   </button>
                   <button
                     onClick={() => onAction(mem.userId, 'APPROVE')}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1"
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 flex items-center gap-1"
                   >
                     <Check className="w-3.5 h-3.5" aria-hidden="true" /> Approve Resident
                   </button>
@@ -181,7 +181,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                       {canReactivate && (
                         <button
                           onClick={() => onAction(mem.userId, 'REACTIVATE')}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+                          className="px-3 py-1 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-medium"
                         >
                           Reactivate Resident
                         </button>
@@ -189,7 +189,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                       {isPending && (
                         <button
                           onClick={() => onAction(mem.userId, 'APPROVE')}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+                          className="px-3 py-1 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-medium"
                         >
                           Approve
                         </button>

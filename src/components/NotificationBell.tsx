@@ -123,7 +123,7 @@ export function NotificationBell() {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                  className="p-1 rounded-lg text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -138,7 +138,7 @@ export function NotificationBell() {
                 </span>
                 <button
                   onClick={requestPermission}
-                  className="px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700"
+                  className="px-2 py-1 bg-emerald-700 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-800"
                 >
                   Enable Push
                 </button>
@@ -148,10 +148,10 @@ export function NotificationBell() {
             {/* List */}
             <div className="overflow-y-auto divide-y divide-zinc-100 p-2 space-y-1">
               {notifications.length === 0 ? (
-                <div className="text-center py-10 px-4 text-zinc-400">
+                <div className="text-center py-10 px-4 text-zinc-500">
                   <Bell className="w-8 h-8 mx-auto mb-2 text-zinc-300 stroke-[1.5]" />
                   <p className="text-xs font-semibold text-zinc-600">All caught up!</p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
                     Ride requests, match notifications, and confirmations will show up here.
                   </p>
                 </div>
@@ -172,7 +172,7 @@ export function NotificationBell() {
                           <p className="text-xs font-bold text-zinc-900 truncate">
                             {notif.title}
                           </p>
-                          <span className="text-[9px] text-zinc-400">
+                          <span className="text-[9px] text-zinc-500">
                             {new Date(notif.createdAt).toLocaleTimeString('en-IN', {
                               hour: '2-digit',
                               minute: '2-digit',

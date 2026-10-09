@@ -1,6 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -26,9 +27,12 @@ export default function FindRidePage() {
     setNext7Days(daysList);
   }, []);
 
+  const [loadError, setLoadError] = useState('');
+
   const handleSearch = async (e?: React.FormEvent, filterDate?: string) => {
     if (e) e.preventDefault();
     setLoading(true);
+    setLoadError('');
     setSearched(true);
     const dateQuery = (filterDate !== undefined ? filterDate : selectedDate) === 'ALL' ? '' : `?date=${filterDate || selectedDate}`;
     try {
@@ -36,9 +40,11 @@ export default function FindRidePage() {
       if (res.ok) {
         const data = await res.json();
         setRides(data.rides || []);
+      } else {
+        setLoadError('Could not load rides.');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setLoadError('Connection problem. Check your internet and try again.');
     } finally {
       setLoading(false);
     }
@@ -70,9 +76,10 @@ export default function FindRidePage() {
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Find a Ride</h1>
@@ -94,7 +101,7 @@ export default function FindRidePage() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[11px] font-semibold text-zinc-600">Select Date (Next 7 Days)</label>
-            <span className="text-[10px] text-zinc-400">Filter by commute day</span>
+            <span className="text-[10px] text-zinc-500">Filter by commute day</span>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {next7Days.map((d) => {
@@ -130,8 +137,9 @@ export default function FindRidePage() {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[11px] font-semibold text-zinc-600 block mb-1">Time</label>
+            <label htmlFor="time" className="text-[11px] font-semibold text-zinc-600 block mb-1">Time</label>
             <input
+              id="time"
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
@@ -139,8 +147,10 @@ export default function FindRidePage() {
             />
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-zinc-600 block mb-1">Seats Needed</label>
-            <select className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white">
+            <label htmlFor="seats-needed" className="text-[11px] font-semibold text-zinc-600 block mb-1">Seats Needed</label>
+            <select
+              id="seats-needed"
+              className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white">
               <option value="1">1 passenger</option>
               <option value="2">2 passengers</option>
             </select>
@@ -163,9 +173,11 @@ export default function FindRidePage() {
         </h2>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-zinc-400">Searching society rides...</div>
+          <Loading label="Searching society rides…" />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={() => void handleSearch()} />
         ) : rides.length === 0 ? (
-          <div className="py-10 text-center text-xs text-zinc-400">
+          <div className="py-10 text-center text-xs text-zinc-500">
             {searched ? 'No matching rides found for this route window.' : 'Enter your destination to find rides.'}
           </div>
         ) : (
@@ -199,7 +211,7 @@ export default function FindRidePage() {
                   <div className="bg-zinc-50 rounded-xl p-2.5 text-xs text-zinc-700 space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 font-semibold text-zinc-800">
-                        <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                        <Clock className="w-3.5 h-3.5 text-zinc-500" />
                         <span>
                           {formatIstTime(ride.departureWindowStart)}
                           {' – '}
@@ -227,7 +239,7 @@ export default function FindRidePage() {
                   </div>
 
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-400">Detour: ~6 mins</span>
+                    <span className="text-[11px] text-zinc-500">Detour: ~6 mins</span>
                     {isAccepted ? (
                       <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accepted

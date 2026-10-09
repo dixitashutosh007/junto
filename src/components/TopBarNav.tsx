@@ -159,24 +159,24 @@ export function TopBarNav() {
               }}
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200/80 text-slate-900 transition-all text-left shadow-2xs active:scale-98 cursor-pointer"
             >
-              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Building2 className="w-3.5 h-3.5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
                   Society
                 </span>
                 <span className="text-xs font-bold truncate max-w-[110px] leading-tight mt-0.5 text-slate-800">
                   {society?.name ?? 'Select society'}
                 </span>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-0.5" />
             </button>
 
             {/* Society Dropdown Menu */}
             {societyMenuOpen && (
               <div className="absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                   Select Residential Society
                 </div>
                 <div className="space-y-1">
@@ -197,7 +197,7 @@ export function TopBarNav() {
                       >
                         <div>
                           <p className="font-bold">{soc.name}</p>
-                          <p className="text-[10px] text-zinc-400 truncate max-w-[180px]">
+                          <p className="text-[10px] text-zinc-500 truncate max-w-[180px]">
                             {soc.address}
                           </p>
                         </div>
@@ -233,14 +233,14 @@ export function TopBarNav() {
                 <CurrentIcon className="w-3.5 h-3.5" />
               </div>
               <div className="flex flex-col text-left">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
                   Role
                 </span>
                 <span className="text-xs font-bold leading-tight mt-0.5 text-slate-800">
                   {currentPersona.label}
                 </span>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-0.5" />
             </button>
 
             {/* Persona Dropdown Menu */}
@@ -248,7 +248,7 @@ export function TopBarNav() {
               <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                 {showDemoPersonas && (
                   <>
-                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                       Switch Active Role (dev only)
                     </div>
                     <div className="space-y-1">
@@ -280,7 +280,7 @@ export function TopBarNav() {
                                 <p className="font-bold">{p.label}</p>
                                 <p
                                   className={`text-[10px] ${
-                                    isSelected ? 'text-zinc-300' : 'text-zinc-400'
+                                    isSelected ? 'text-zinc-300' : 'text-zinc-500'
                                   }`}
                                 >
                                   {p.description}
@@ -373,7 +373,7 @@ export function TopBarNav() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-2xl">{app.icon}</span>
                       {app.active ? (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-700 text-white">
                           ACTIVE
                         </span>
                       ) : (

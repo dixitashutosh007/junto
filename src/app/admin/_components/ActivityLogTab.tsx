@@ -73,7 +73,7 @@ export function ActivityLogTab() {
         </div>
       ) : logs.length === 0 ? (
         <div className="p-8 text-center bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
-          <History className="w-8 h-8 text-zinc-400 mx-auto mb-2" aria-hidden="true" />
+          <History className="w-8 h-8 text-zinc-500 mx-auto mb-2" aria-hidden="true" />
           <p className="text-xs font-semibold text-zinc-700">No activity logged yet</p>
           <p className="text-[11px] text-zinc-500 mt-0.5">Administrative and lifecycle events will appear here.</p>
         </div>

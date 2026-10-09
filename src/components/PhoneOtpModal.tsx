@@ -177,10 +177,11 @@ export function PhoneOtpModal({
         {step === 'PHONE' ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-800 block mb-1">
+              <label htmlFor="mobile-number-91" className="text-xs font-bold text-slate-800 block mb-1">
                 Mobile Number (+91)
               </label>
               <input
+                id="mobile-number-91"
                 type="tel"
                 required
                 value={phone}
@@ -215,10 +216,11 @@ export function PhoneOtpModal({
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-800 block mb-1">
+              <label htmlFor="6-digit-otp-code" className="text-xs font-bold text-slate-800 block mb-1">
                 6-Digit OTP Code
               </label>
               <input
+                id="6-digit-otp-code"
                 type="text"
                 required
                 inputMode="numeric"
@@ -241,7 +243,7 @@ export function PhoneOtpModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 flex items-center justify-center gap-1 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Continue'}
               </button>

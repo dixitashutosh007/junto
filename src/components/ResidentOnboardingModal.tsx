@@ -226,7 +226,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                     placeholder="name@company.com"
                     className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
                   />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3.5" />
+                  <Mail className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
               </div>
 
@@ -245,7 +245,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                     placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
                     className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
                   />
-                  <Home className="w-4 h-4 text-slate-400 absolute right-3 top-3.5" />
+                  <Home className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
                 {society?.settings?.flat_format_example && (
                   <p className="text-[10px] text-slate-500 mt-1">
@@ -282,7 +282,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                   onClick={() => setCommuteRole('OFFERER')}
                   className={`py-3 px-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
                     commuteRole === 'OFFERER'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
@@ -455,7 +455,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   isLegalFullyAccepted
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                    : 'bg-rose-100 text-rose-800 border border-rose-300'
                 }`}>
                   {isLegalFullyAccepted ? 'Accepted ✓' : 'Action Required'}
                 </span>
@@ -479,7 +479,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -617,8 +617,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
                   isLegalFullyAccepted
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
+                    : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />

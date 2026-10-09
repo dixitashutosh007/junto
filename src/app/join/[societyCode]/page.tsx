@@ -93,9 +93,10 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Join your society</h1>
@@ -152,8 +153,9 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
           )}
 
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Full Name</label>
+            <label htmlFor="full-name" className="text-xs font-semibold text-zinc-700 block mb-1">Full Name</label>
             <input
+              id="full-name"
               type="text"
               required
               value={fullName}
@@ -165,8 +167,9 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Flat / Unit Number</label>
+              <label htmlFor="flat-unit-number" className="text-xs font-semibold text-zinc-700 block mb-1">Flat / Unit Number</label>
               <input
+                id="flat-unit-number"
                 type="text"
                 required
                 value={flatNumber}
@@ -176,8 +179,9 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Gender</label>
+              <label htmlFor="gender" className="text-xs font-semibold text-zinc-700 block mb-1">Gender</label>
               <select
+                id="gender"
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
@@ -198,8 +202,9 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Email Address</label>
+            <label htmlFor="email-address" className="text-xs font-semibold text-zinc-700 block mb-1">Email Address</label>
             <input
+              id="email-address"
               type="email"
               required
               value={email}
@@ -229,7 +234,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 isLegalFullyAccepted
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                  : 'bg-rose-100 text-rose-800 border border-rose-300'
               }`}>
                 {isLegalFullyAccepted ? 'Accepted ✓' : 'Required'}
               </span>
@@ -253,7 +258,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? 'Registering...' : 'Submit Society Registration'}
             </button>
@@ -371,8 +376,8 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
                 }}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
                   isLegalFullyAccepted
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
+                    : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />

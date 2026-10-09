@@ -68,7 +68,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">100% Verified Co-Residents</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Only approved residents from your society clubhouse and gates.
             </p>
           </div>
@@ -80,7 +80,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">Smart Detour Matching</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Matched strictly along your commute corridor with ≤ 10 min detours.
             </p>
           </div>
@@ -92,7 +92,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white">Peer Facilitation (Zero Fares)</h3>
-            <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+            <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
               Friendly shared rides to Manyata, Bellandur, Electronic City & Whitefield.
             </p>
           </div>

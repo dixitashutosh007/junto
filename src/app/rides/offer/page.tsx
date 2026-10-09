@@ -113,9 +113,10 @@ export default function OfferRidePage() {
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">Offer a Ride</h1>
@@ -150,7 +151,7 @@ export default function OfferRidePage() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-zinc-700">Select Date (Next 7 Days)</label>
-              <span className="text-[10px] text-zinc-400">Up to 7 days ahead</span>
+              <span className="text-[10px] text-zinc-500">Up to 7 days ahead</span>
             </div>
 
             {/* Quick 7-Day Pills */}
@@ -164,7 +165,7 @@ export default function OfferRidePage() {
                     onClick={() => setJourneyDate(d.dateStr)}
                     className={`flex flex-col items-center justify-center min-w-[70px] px-2.5 py-2 rounded-xl border text-center transition-all shrink-0 ${
                       isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-600/30'
+                        ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-600/30'
                         : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300'
                     }`}
                   >
@@ -177,6 +178,7 @@ export default function OfferRidePage() {
 
             <div className="pt-1">
               <input
+                aria-label="Journey date"
                 type="date"
                 required
                 value={journeyDate}
@@ -205,8 +207,9 @@ export default function OfferRidePage() {
             <label className="text-xs font-semibold text-zinc-700">Departure Window</label>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-[10px] text-zinc-400 block mb-0.5">Earliest</span>
+                <label htmlFor="time-earliest" className="text-[10px] text-zinc-500 block mb-0.5">Earliest</label>
                 <input
+                  id="time-earliest"
                   type="time"
                   value={timeWindowStart}
                   onChange={(e) => setTimeWindowStart(e.target.value)}
@@ -214,8 +217,9 @@ export default function OfferRidePage() {
                 />
               </div>
               <div>
-                <span className="text-[10px] text-zinc-400 block mb-0.5">Latest</span>
+                <label htmlFor="time-latest" className="text-[10px] text-zinc-500 block mb-0.5">Latest</label>
                 <input
+                  id="time-latest"
                   type="time"
                   value={timeWindowEnd}
                   onChange={(e) => setTimeWindowEnd(e.target.value)}
@@ -228,8 +232,9 @@ export default function OfferRidePage() {
           {/* Seats & Vehicle */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
+              <label htmlFor="available-seats" className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
               <select
+                id="available-seats"
                 value={seats}
                 onChange={(e) => setSeats(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -241,8 +246,9 @@ export default function OfferRidePage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1">Gender Preference</label>
+              <label htmlFor="gender-preference" className="text-xs font-semibold text-zinc-700 block mb-1">Gender Preference</label>
               <select
+                id="gender-preference"
                 value={genderPref}
                 onChange={(e) => setGenderPref(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -256,9 +262,10 @@ export default function OfferRidePage() {
 
           {/* Vehicle Selector */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-700">Vehicle</label>
+            <label htmlFor="vehicle" className="text-xs font-semibold text-zinc-700">Vehicle</label>
             {vehicles.length > 0 ? (
               <select
+                id="vehicle"
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
@@ -282,7 +289,7 @@ export default function OfferRidePage() {
                 Junto estimates fair fuel points based on your vehicle's fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
               </p>
             </div>
-            <p className="text-[10px] text-zinc-400">
+            <p className="text-[10px] text-zinc-500">
               Registration number is masked until you accept a ride request.
             </p>
           </div>
@@ -297,7 +304,7 @@ export default function OfferRidePage() {
             <button
               type="submit"
               disabled={isSubmitting || !selectedVehicleId}
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-700 disabled:opacity-50 shadow-md shadow-emerald-600/20"
+              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 shadow-md shadow-emerald-600/20"
             >
               {isSubmitting ? 'Publishing Ride...' : 'Publish Ride Offer'}
             </button>

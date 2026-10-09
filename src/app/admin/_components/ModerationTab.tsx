@@ -104,7 +104,7 @@ export function ModerationTab({ reports, loading, notify, onChanged }: Moderatio
                         <div className="flex gap-2">
                           <button
                             onClick={() => updateReport(report.id, 'RESOLVED', resolutionText)}
-                            className="flex-1 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700"
+                            className="flex-1 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800"
                           >
                             Confirm Resolved
                           </button>

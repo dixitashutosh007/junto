@@ -1,6 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { Loading, LoadError } from '@/components/ui/LoadState';
+import { ConfirmDialog } from '@/components/ui/Dialog';
 import { formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -35,16 +37,21 @@ export default function MyRidesPage() {
   const [message, setMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [loadError, setLoadError] = useState('');
+
   const loadMyRides = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const res = await apiFetch('/api/v1/rides?mine=true');
       if (res.ok) {
         const data = await res.json();
         setRides(data.rides || []);
+      } else {
+        setLoadError('Could not load your rides.');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setLoadError('Connection problem. Check your internet and try again.');
     } finally {
       setLoading(false);
     }
@@ -95,8 +102,9 @@ export default function MyRidesPage() {
     }
   };
 
+  const [confirmCancelRideId, setConfirmCancelRideId] = useState<string | null>(null);
+
   const handleDelete = async (journeyId: string) => {
-    if (!confirm('Cancel this ride? Residents who requested or booked seats will be notified.')) return;
     try {
       const res = await apiFetch(`/api/v1/rides?journeyId=${journeyId}`, {
         method: 'DELETE',
@@ -122,9 +130,10 @@ export default function MyRidesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
+            aria-label="Back"
             className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Link>
           <div>
             <h1 className="text-lg font-bold text-zinc-900">My Offered Rides</h1>
@@ -134,7 +143,7 @@ export default function MyRidesPage() {
 
         <Link
           href="/rides/offer"
-          className="p-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1 text-xs font-semibold shadow-xs"
+          className="p-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1 text-xs font-semibold shadow-xs"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Offer New</span>
@@ -148,7 +157,9 @@ export default function MyRidesPage() {
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-zinc-400">Loading your rides...</div>
+        <Loading label="Loading your rides…" />
+      ) : loadError ? (
+        <LoadError message={loadError} onRetry={() => void loadMyRides()} />
       ) : rides.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Car className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
@@ -158,7 +169,7 @@ export default function MyRidesPage() {
           </p>
           <Link
             href="/rides/offer"
-            className="inline-block px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold"
+            className="inline-block px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold"
           >
             Offer a Ride Now
           </Link>
@@ -177,7 +188,7 @@ export default function MyRidesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
                       {formatIstTime(ride.departureWindowStart)}
                       {' – '}
                       {formatIstTime(ride.departureWindowEnd)}
@@ -204,8 +215,9 @@ export default function MyRidesPage() {
                   /* INLINE EDIT FORM */
                   <div className="space-y-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs">
                     <div>
-                      <label className="font-semibold text-zinc-700 block mb-1">Destination</label>
+                      <label htmlFor="destination" className="font-semibold text-zinc-700 block mb-1">Destination</label>
                       <input
+                        id="destination"
                         type="text"
                         value={editDest}
                         onChange={(e) => setEditDest(e.target.value)}
@@ -215,8 +227,9 @@ export default function MyRidesPage() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="font-semibold text-zinc-700 block mb-1">Seats</label>
+                        <label htmlFor="seats" className="font-semibold text-zinc-700 block mb-1">Seats</label>
                         <select
+                          id="seats"
                           value={editSeats}
                           onChange={(e) => setEditSeats(Number(e.target.value))}
                           className="w-full text-xs p-2 rounded-lg border border-zinc-200 bg-white"
@@ -236,7 +249,7 @@ export default function MyRidesPage() {
                             onChange={(e) => setEditStart(e.target.value)}
                             className="w-full text-[11px] p-1.5 rounded-lg border border-zinc-200 bg-white"
                           />
-                          <span className="text-zinc-400">-</span>
+                          <span className="text-zinc-500">-</span>
                           <input
                             type="time"
                             value={editEnd}
@@ -257,7 +270,7 @@ export default function MyRidesPage() {
                       <button
                         onClick={() => handleSaveEdit(ride.id, ride.journeyDate)}
                         disabled={isSaving}
-                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1 hover:bg-emerald-700 shadow-xs"
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1 hover:bg-emerald-800 shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5" /> Save
                       </button>
@@ -294,7 +307,7 @@ export default function MyRidesPage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(ride.id)}
+                            onClick={() => setConfirmCancelRideId(ride.id)}
                             className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                             title="Cancel Ride"
                             aria-label="Cancel ride"
@@ -311,6 +324,20 @@ export default function MyRidesPage() {
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmCancelRideId !== null}
+        title="Cancel this ride?"
+        description="Residents who requested or booked seats will be notified."
+        confirmLabel="Cancel ride"
+        cancelLabel="Keep ride"
+        destructive
+        onCancel={() => setConfirmCancelRideId(null)}
+        onConfirm={() => {
+          const id = confirmCancelRideId;
+          setConfirmCancelRideId(null);
+          if (id) void handleDelete(id);
+        }}
+      />
     </div>
   );
 }

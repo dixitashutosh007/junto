@@ -113,7 +113,7 @@ export function PlacesAutocompleteInput({
       {label && <label className="text-xs font-semibold text-zinc-700 block">{label}</label>}
 
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
           <MapPin className="w-4 h-4 text-emerald-600" />
         </div>
 
@@ -131,12 +131,13 @@ export function PlacesAutocompleteInput({
         />
 
         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />}
+          {isLoading && <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" />}
           {query && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+              aria-label="Clear location"
+              className="p-1 rounded-md text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -147,7 +148,7 @@ export function PlacesAutocompleteInput({
       {/* Autocomplete Dropdown */}
       {isOpen && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg text-xs">
-          <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
             Suggested Tech Parks & Hubs
           </div>
           {suggestions.map((item) => (

@@ -69,9 +69,10 @@ function FeedbackForm() {
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/"
+          aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="text-lg font-bold text-zinc-900">How was your commute?</h1>
@@ -120,7 +121,7 @@ function FeedbackForm() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-zinc-700">Community Feedback Tags</label>
-              <span className="text-[10px] text-zinc-400">Select all that apply</span>
+              <span className="text-[10px] text-zinc-500">Select all that apply</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {availableTags.map((tag) => {
@@ -133,7 +134,7 @@ function FeedbackForm() {
                     aria-pressed={isSelected}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                       isSelected
-                        ? 'bg-emerald-600 text-white shadow-xs'
+                        ? 'bg-emerald-700 text-white shadow-xs'
                         : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                     }`}
                   >
