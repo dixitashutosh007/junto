@@ -17,6 +17,8 @@ import {
   Home,
 } from 'lucide-react';
 import Link from 'next/link';
+import { TripSafetyActions } from '@/components/TripSafetyActions';
+import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 
 type MyRequest = RideRequest & {
   journey: RideOccurrence | null;
@@ -166,6 +168,18 @@ export default function MyRequestsPage() {
                       <p className="text-[11px] text-zinc-700 font-mono mt-0.5">
                         License Plate: <strong>{req.vehiclePlate}</strong>
                       </p>
+                    )}
+                    {req.journey && (
+                      <TripSafetyActions
+                        trip={{
+                          driverName: req.offererName,
+                          vehicle: req.vehicleName,
+                          plate: req.vehiclePlate,
+                          from: req.pickupName,
+                          to: req.dropoffName,
+                          when: `${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`,
+                        }}
+                      />
                     )}
                   </div>
                 )}

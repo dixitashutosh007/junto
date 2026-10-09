@@ -3,6 +3,7 @@ import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { ModerationReport } from '@/types';
 import { ModerationReportSchema, UpdateReportSchema } from '@/lib/validation/schemas';
+import { AUTO_SUSPEND_AFTER_UPHELD_REPORTS, shouldAutoSuspend } from '@/lib/services/moderation';
 import { parseBody } from '@/lib/validation/parse';
 
 // Submit a resident or ride violation report
@@ -92,5 +93,41 @@ export async function PATCH(req: NextRequest) {
     createdAt: new Date().toISOString(),
   });
 
-  return NextResponse.json({ success: true, report: updated });
+  // Repeat offenders lose access until an admin reactivates them
+  let autoSuspended = false;
+  if (status === 'RESOLVED') {
+    const reportedUserId = updated.reportedUserId;
+    const [reports, membership] = await Promise.all([
+      repo.listModerationReports(auth.societyId),
+      repo.getMembership(auth.societyId, reportedUserId),
+    ]);
+    if (shouldAutoSuspend(reports, membership)) {
+      const reason = `Automatically suspended after ${AUTO_SUSPEND_AFTER_UPHELD_REPORTS} upheld reports`;
+      await repo.updateMembershipStatus(auth.societyId, reportedUserId, 'SUSPENDED', auth.userId, reason);
+      const now = new Date().toISOString();
+      await repo.recordAuditEvent({
+        id: `audit-${crypto.randomUUID()}`,
+        societyId: auth.societyId,
+        actorUserId: auth.userId,
+        action: 'MEMBER_AUTO_SUSPENDED',
+        entityType: 'MEMBERSHIP',
+        entityId: membership!.id,
+        metadata: { targetUserId: reportedUserId, triggeringReportId: reportId },
+        createdAt: now,
+      });
+      await repo.createNotification({
+        id: `notif-${crypto.randomUUID()}`,
+        societyId: auth.societyId,
+        userId: reportedUserId,
+        title: 'Your access is paused',
+        body: 'Several reports about you were upheld by your society admins. Please contact them to restore access.',
+        type: 'GENERAL',
+        read: false,
+        createdAt: now,
+      });
+      autoSuspended = true;
+    }
+  }
+
+  return NextResponse.json({ success: true, report: updated, autoSuspended });
 }
