@@ -51,4 +51,12 @@ export function hasFirebaseCredentials(): boolean {
 }
 
 export const adminDb: Firestore = getFirestore(app);
+// Optional fields left undefined (e.g. a ride without a place ID) are skipped
+// instead of failing the write. settings() throws if this module is evaluated
+// again for the same app (dev hot reload), where it is already applied.
+try {
+  adminDb.settings({ ignoreUndefinedProperties: true });
+} catch {
+  // already configured
+}
 export const adminAuth: Auth = getAuth(app);

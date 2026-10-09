@@ -21,6 +21,7 @@ import {
   Check,
   XCircle,
   Phone,
+  Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
@@ -257,7 +258,12 @@ export default function HomePage() {
                 )}
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Flat {membership?.flatNumber || 'B-804'} · {membership?.role === 'SOCIETY_ADMIN' ? 'Society Admin' : 'Resident'}
+                {membership?.flatNumber ? `Flat ${membership.flatNumber} · ` : ''}
+                {membership?.role === 'SUPER_ADMIN'
+                  ? 'App Admin'
+                  : membership?.role === 'SOCIETY_ADMIN'
+                    ? 'Society Admin'
+                    : 'Resident'}
               </p>
             </div>
           </div>
@@ -281,7 +287,7 @@ export default function HomePage() {
             </span>
             <span className="text-[10px] font-medium text-slate-500">Sets your default view</span>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+          <div className="grid grid-cols-3 gap-2 text-xs font-semibold">
             <button
               onClick={() => updateCommuteIntent('OFFERER')}
               className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -303,6 +309,17 @@ export default function HomePage() {
             >
               <Search className="w-4 h-4" />
               <span>Find Rides</span>
+            </button>
+            <button
+              onClick={() => updateCommuteIntent('BOTH')}
+              className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                user?.commuteIntent === 'BOTH'
+                  ? 'bg-slate-900 text-white shadow-sm font-bold'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/60'
+              }`}
+            >
+              <Repeat className="w-4 h-4" />
+              <span>Both</span>
             </button>
           </div>
         </div>
@@ -352,7 +369,7 @@ export default function HomePage() {
       </div>
 
       {/* Admin Quick Link if admin */}
-      {membership?.role === 'SOCIETY_ADMIN' && (
+      {(membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN') && (
         <div className="px-5 mb-4">
           <Link
             href="/admin"
@@ -360,7 +377,7 @@ export default function HomePage() {
           >
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-amber-600" />
-              <span>Society Admin Portal (Approvals & Moderation)</span>
+              <span>Admin Portal (Approvals & Moderation)</span>
             </div>
             <ChevronRight className="w-4 h-4 text-amber-600" />
           </Link>

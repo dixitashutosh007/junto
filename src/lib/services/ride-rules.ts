@@ -6,20 +6,21 @@ export const MAX_DAYS_AHEAD = 7;
 
 /**
  * Checks a ride's departure window. Returns an error message, or null when
- * the window is valid: both times on `journeyDate` in IST, end not before
- * start, start in the future and within the booking horizon.
+ * the window is valid: both times on `journeyDate` in IST, the latest time
+ * after the earliest (when a latest time is given), start in the future and
+ * within the booking horizon.
  */
 export function validateDepartureWindow(
   journeyDate: string,
   start: string,
-  end: string,
+  end: string | undefined,
   now: Date = new Date()
 ): string | null {
-  if (istDateOf(start) !== journeyDate || istDateOf(end) !== journeyDate) {
+  if (istDateOf(start) !== journeyDate || (end && istDateOf(end) !== journeyDate)) {
     return 'Departure times must be on the journey date (India time)';
   }
-  if (Date.parse(end) < Date.parse(start)) {
-    return 'The departure window must end after it starts';
+  if (end && Date.parse(end) <= Date.parse(start)) {
+    return 'The latest departure time must be after the earliest';
   }
   if (Date.parse(start) <= now.getTime()) {
     return 'The departure time has already passed';

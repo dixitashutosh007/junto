@@ -2,6 +2,7 @@ import { ISocietyRepository } from './repository.interface';
 import { adminDb } from '../firebase/admin';
 import {
   DocumentData,
+  FieldValue,
   QueryDocumentSnapshot,
   Transaction,
   Query,
@@ -28,6 +29,16 @@ import {
   AuditEvent,
   InAppNotification,
 } from '@/types';
+
+/**
+ * Turns a partial update into a Firestore update: a field set to undefined is
+ * removed from the document (as in the mock repository) rather than rejected.
+ */
+export function toFirestoreUpdate(updates: object): DocumentData {
+  return Object.fromEntries(
+    Object.entries(updates).map(([key, value]) => [key, value === undefined ? FieldValue.delete() : value])
+  );
+}
 
 /**
  * Google Cloud Firestore Repository Implementation
@@ -76,7 +87,7 @@ export class FirestoreRepository implements ISocietyRepository {
   }
 
   async updateSociety(societyId: string, updates: Partial<Society>): Promise<Society> {
-    await this.db.collection('societies').doc(societyId).update(updates);
+    await this.db.collection('societies').doc(societyId).update(toFirestoreUpdate(updates));
     const updated = await this.getSocietyById(societyId);
     if (!updated) throw new Error('Society not found');
     return updated;
@@ -148,7 +159,7 @@ export class FirestoreRepository implements ISocietyRepository {
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User> {
-    await this.db.collection('users').doc(userId).update(updates);
+    await this.db.collection('users').doc(userId).update(toFirestoreUpdate(updates));
     const updated = await this.getUserById(userId);
     if (!updated) throw new Error('User not found');
     return updated;
@@ -191,10 +202,7 @@ export class FirestoreRepository implements ISocietyRepository {
       .doc(societyId)
       .collection('members')
       .doc(userId);
-    await ref.update({
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    });
+    await ref.update(toFirestoreUpdate({ ...updates, updatedAt: new Date().toISOString() }));
     const updated = await this.getMembership(societyId, userId);
     if (!updated) throw new Error('Membership not found');
     return updated;
@@ -222,7 +230,7 @@ export class FirestoreRepository implements ISocietyRepository {
     }
     if (reason) updates.rejectionReason = reason;
 
-    await ref.update(updates);
+    await ref.update(toFirestoreUpdate(updates));
     const updated = await ref.get();
     return updated.data() as SocietyMembership;
   }
@@ -400,7 +408,7 @@ export class FirestoreRepository implements ISocietyRepository {
       .doc(societyId)
       .collection('occurrences')
       .doc(journeyId);
-    await ref.update(updates);
+    await ref.update(toFirestoreUpdate(updates));
     const doc = await ref.get();
     return doc.data() as RideOccurrence;
   }
@@ -602,7 +610,7 @@ export class FirestoreRepository implements ISocietyRepository {
     const updates: Partial<ModerationReport> = { status };
     if (resolutionNotes) updates.resolutionNotes = resolutionNotes;
     if (adminUserId) updates.resolvedBy = adminUserId;
-    await ref.update(updates);
+    await ref.update(toFirestoreUpdate(updates));
     const doc = await ref.get();
     return doc.data() as ModerationReport;
   }

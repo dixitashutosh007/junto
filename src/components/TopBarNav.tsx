@@ -14,6 +14,7 @@ import {
   Layers,
   ArrowRight,
   LogOut,
+  Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,6 +30,7 @@ export function TopBarNav() {
     user,
     isAuthenticated,
     logout,
+    updateCommuteIntent,
   } = useAuth();
 
   const [societyMenuOpen, setSocietyMenuOpen] = useState(false);
@@ -88,19 +90,20 @@ export function TopBarNav() {
   const showDemoPersonas = process.env.NODE_ENV !== 'production';
   const isAdmin = membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN';
 
-  const realPersonaIndex =
-    membership?.role === 'SUPER_ADMIN'
-      ? 3
-      : membership?.role === 'SOCIETY_ADMIN'
-        ? 2
-        : user?.commuteIntent === 'SEEKER'
-          ? 1
-          : 0;
+  // Everyone, admins included, rides as a resident; the ride mode picks their menu
+  const rideModes = [
+    { value: 'OFFERER' as const, label: 'Ride Offerer', icon: Car, color: 'text-emerald-700 bg-emerald-50' },
+    { value: 'SEEKER' as const, label: 'Ride Seeker', icon: Search, color: 'text-blue-700 bg-blue-50' },
+    { value: 'BOTH' as const, label: 'Offer & Find', icon: Repeat, color: 'text-slate-700 bg-slate-100' },
+  ];
+  const currentRideMode = rideModes.find((m) => m.value === (user?.commuteIntent ?? 'SEEKER')) ?? rideModes[1];
+  const roleLabel =
+    membership?.role === 'SUPER_ADMIN' ? 'App Admin' : membership?.role === 'SOCIETY_ADMIN' ? 'Society Admin' : 'Resident';
 
   // Active persona descriptor
   const currentPersona = showDemoPersonas
     ? availablePersonas.find((p) => p.id === activePersona) || availablePersonas[0]
-    : availablePersonas[realPersonaIndex];
+    : currentRideMode;
   const CurrentIcon = currentPersona.icon;
 
   // Junto Product Suite
@@ -231,7 +234,7 @@ export function TopBarNav() {
               </div>
               <div className="flex flex-col text-left">
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
-                  Role
+                  {showDemoPersonas ? 'Role' : roleLabel}
                 </span>
                 <span className="text-xs font-bold leading-tight mt-0.5 text-slate-800">
                   {currentPersona.label}
@@ -290,6 +293,43 @@ export function TopBarNav() {
                       })}
                     </div>
                   </>
+                )}
+
+                {/* Ride mode: sets the menu and home screen for offering or finding rides */}
+                {!showDemoPersonas && (
+                  <div>
+                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                      Ride mode
+                    </div>
+                    <div className="space-y-1">
+                      {rideModes.map((m) => {
+                        const isSelected = m.value === currentRideMode.value;
+                        const Icon = m.icon;
+                        return (
+                          <button
+                            key={m.value}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={async () => {
+                              setPersonaMenuOpen(false);
+                              if (!isSelected) await updateCommuteIntent(m.value);
+                            }}
+                            className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors ${
+                              isSelected ? 'bg-zinc-900 text-white font-semibold' : 'hover:bg-zinc-50 text-zinc-700'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className={`p-1.5 rounded-lg ${isSelected ? 'bg-zinc-800 text-white' : m.color}`}>
+                                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                              </span>
+                              <span className="font-bold">{m.label}</span>
+                            </span>
+                            {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
 
                 {/* Society Admin Portal Direct Link */}

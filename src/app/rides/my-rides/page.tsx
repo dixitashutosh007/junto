@@ -3,7 +3,8 @@
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
-import { formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
+import { addMinutesHHMM, formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
+import { TimeSelect } from '@/components/ui/TimeSelect';
 import React, { useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { RideOccurrence } from '@/types';
@@ -231,19 +232,27 @@ export default function MyRidesPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="font-semibold text-zinc-700 block mb-1">Time Window</label>
+                        <span className="font-semibold text-zinc-700 block mb-1">Time Window</span>
                         <div className="flex gap-1 items-center">
-                          <input
-                            type="time"
+                          <label htmlFor="edit-earliest" className="sr-only">Earliest departure</label>
+                          <TimeSelect
+                            id="edit-earliest"
                             value={editStart}
-                            onChange={(e) => setEditStart(e.target.value)}
+                            until="23:50"
+                            onChange={(t) => {
+                              setEditStart(t);
+                              // The latest time must stay after the earliest
+                              if (editEnd <= t) setEditEnd(addMinutesHHMM(t, 15));
+                            }}
                             className="w-full text-[11px] p-1.5 rounded-lg border border-zinc-200 bg-white"
                           />
-                          <span className="text-zinc-500">-</span>
-                          <input
-                            type="time"
+                          <span className="text-zinc-500" aria-hidden="true">-</span>
+                          <label htmlFor="edit-latest" className="sr-only">Latest departure</label>
+                          <TimeSelect
+                            id="edit-latest"
                             value={editEnd}
-                            onChange={(e) => setEditEnd(e.target.value)}
+                            after={editStart}
+                            onChange={setEditEnd}
                             className="w-full text-[11px] p-1.5 rounded-lg border border-zinc-200 bg-white"
                           />
                         </div>

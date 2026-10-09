@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   addDays,
+  addMinutesHHMM,
+  formatHHMM12,
+  timeSlots,
   formatIstTime,
   istDateOf,
   istDateString,
@@ -40,5 +43,27 @@ describe('IST time helpers', () => {
     expect(days.map((d) => d.dateStr)).toEqual(['2026-10-10', '2026-10-11', '2026-10-12']);
     expect(days[0].weekday).toBe('Today');
     expect(days[2].weekday).toBe('Mon');
+  });
+});
+
+describe('departure time choices', () => {
+  it('offers every 5 minutes of the day', () => {
+    const slots = timeSlots();
+    expect(slots).toHaveLength(288);
+    expect(slots.slice(0, 3)).toEqual(['00:00', '00:05', '00:10']);
+    expect(slots.at(-1)).toBe('23:55');
+  });
+
+  it('adds minutes, stopping at the last time choice of the day', () => {
+    expect(addMinutesHHMM('08:00', 20)).toBe('08:20');
+    expect(addMinutesHHMM('08:50', 15)).toBe('09:05');
+    expect(addMinutesHHMM('23:50', 30)).toBe('23:55');
+  });
+
+  it('labels times in 12-hour form', () => {
+    expect(formatHHMM12('00:05')).toBe('12:05 AM');
+    expect(formatHHMM12('08:30')).toBe('8:30 AM');
+    expect(formatHHMM12('12:00')).toBe('12:00 PM');
+    expect(formatHHMM12('17:45')).toBe('5:45 PM');
   });
 });

@@ -98,3 +98,34 @@ export function upcomingIstDays(count: number, now: Date = new Date()): DayOptio
   }
   return days;
 }
+
+/** Minutes between departure-time choices in the ride forms */
+export const TIME_STEP_MINUTES = 5;
+
+function hhmmToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToHHMM(total: number): string {
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** `HH:mm` plus some minutes, kept within the day's last time choice (23:55) */
+export function addMinutesHHMM(hhmm: string, minutes: number): string {
+  const lastSlot = 24 * 60 - TIME_STEP_MINUTES;
+  return minutesToHHMM(Math.min(Math.max(hhmmToMinutes(hhmm) + minutes, 0), lastSlot));
+}
+
+/** Every `HH:mm` of the day, `step` minutes apart, from 00:00 */
+export function timeSlots(step: number = TIME_STEP_MINUTES): string[] {
+  const slots: string[] = [];
+  for (let t = 0; t < 24 * 60; t += step) slots.push(minutesToHHMM(t));
+  return slots;
+}
+
+/** `HH:mm` as a 12-hour label, e.g. "08:05" -> "8:05 AM" */
+export function formatHHMM12(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
