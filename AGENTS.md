@@ -30,13 +30,14 @@ Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODU
 
 **Every API route must:**
 - Start with `const auth = await requireAuth(req, { statuses?, roles? }); if (auth instanceof NextResponse) return auth;`. It returns 401 when signed out and 403 unless the membership is `ACTIVE` (pass `ONBOARDING_STATUSES` only for onboarding routes).
-- Validate the body and query with a Zod schema; never destructure raw `req.json()`.
+- Validate the body and query with a Zod schema via `parseBody(req, Schema)` / `parseQuery(req, Schema)` from `src/lib/validation/parse.ts`; never destructure raw `req.json()`.
 - Check ownership or role on the target entity (the offerer, the seeker, or an admin of *that* society).
-- Return generic error messages; never echo `err.message` to the client.
+- Admin routes pass `permission: 'canApproveResidents' | 'canManageSettings' | 'canModerateReports' | 'canViewAuditLogs'` to `requireAuth`.
+- Return generic error messages (`serverError(context, err)`); never echo `err.message` to the client.
 - Have a route test covering the unauthorized and wrong-user cases.
 
 **Security invariants:**
-- The server uses the Firestore admin SDK, which bypasses `firestore.rules`. The API is the real access-control boundary.
+- The server uses the Firestore admin SDK, which bypasses `firestore.rules`; the rules deny all direct client access. The API is the only access-control boundary.
 - Dev shortcuts (`x-dev-user-id`, the persona switcher, `dev-token-*` tokens, OTP `123456`, `MockDynamoRepository`) must be unreachable when `NODE_ENV === 'production'`.
 - Contact data (mobile, flat number, number plate) is shown only to accepted ride participants, via `formatPublicJourneyView` in `src/lib/services/privacy.ts`.
 - Never hardcode a society ID; use `auth.societyId`.

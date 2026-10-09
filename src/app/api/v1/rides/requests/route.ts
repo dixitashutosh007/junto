@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { RideRequest } from '@/types';
-import { CreateRideRequestSchema } from '@/lib/validation/schemas';
+import {
+  CreateRideRequestSchema,
+  ListRequestsQuerySchema,
+  RequestIdQuerySchema,
+  RespondToRequestSchema,
+} from '@/lib/validation/schemas';
+import { parseBody, parseQuery } from '@/lib/validation/parse';
 
 // Request a seat on a journey
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json().catch(() => ({}));
-  const parseResult = CreateRideRequestSchema.safeParse(body);
-  if (!parseResult.success) {
-    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid request parameters');
-  }
+  const body = await parseBody(req, CreateRideRequestSchema);
+  if (body instanceof NextResponse) return body;
 
   const {
     journeyId,
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
     dropoffName,
     dropoffLat,
     dropoffLng,
-  } = parseResult.data;
+  } = body;
 
   const repo = getRepository();
   const journey = await repo.getRideOccurrence(auth.societyId, journeyId);
@@ -93,10 +96,9 @@ export async function PUT(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
-  const { requestId, action, note } = body; // action: 'ACCEPT' | 'REJECT'
-
-  if (!requestId || !action) return errorResponse('Missing requestId or action');
+  const body = await parseBody(req, RespondToRequestSchema);
+  if (body instanceof NextResponse) return body;
+  const { requestId, action, note } = body;
 
   const repo = getRepository();
   const request = await repo.getRideRequest(auth.societyId, requestId);
@@ -180,12 +182,19 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const journeyId = searchParams.get('journeyId');
+  const query = parseQuery(req, ListRequestsQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const { journeyId } = query;
 
   const repo = getRepository();
 
   if (journeyId) {
+    // Requests on a journey (who asked, pickup points) are visible only to its offerer
+    const journey = await repo.getRideOccurrence(auth.societyId, journeyId);
+    if (!journey) return errorResponse('Journey not found', 404);
+    if (journey.offererUserId !== auth.userId) {
+      return errorResponse('Forbidden: Only the offerer can view requests for this ride', 403);
+    }
     const journeyRequests = await repo.listJourneyRequests(auth.societyId, journeyId);
     return NextResponse.json({ requests: journeyRequests });
   }
@@ -222,10 +231,9 @@ export async function DELETE(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const requestId = searchParams.get('requestId');
-
-  if (!requestId) return errorResponse('Missing requestId');
+  const query = parseQuery(req, RequestIdQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const { requestId } = query;
 
   const repo = getRepository();
   const request = await repo.getRideRequest(auth.societyId, requestId);

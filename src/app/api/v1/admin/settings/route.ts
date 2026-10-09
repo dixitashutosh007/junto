@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
+import { UpdateSocietySettingsSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 // Update society profile and settings (name, address, location, rules, detour threshold)
 export async function PUT(req: NextRequest) {
-  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  const auth = await requireAuth(req, { permission: 'canManageSettings' });
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, UpdateSocietySettingsSchema);
+  if (body instanceof NextResponse) return body;
   const {
     name,
     address,
@@ -30,8 +33,8 @@ export async function PUT(req: NextRequest) {
   const societyUpdates: Partial<typeof society> = {};
   if (name !== undefined) societyUpdates.name = name;
   if (address !== undefined) societyUpdates.address = address;
-  if (latitude !== undefined) societyUpdates.latitude = Number(latitude);
-  if (longitude !== undefined) societyUpdates.longitude = Number(longitude);
+  if (latitude !== undefined) societyUpdates.latitude = latitude;
+  if (longitude !== undefined) societyUpdates.longitude = longitude;
 
   if (Object.keys(societyUpdates).length > 0) {
     society = await repo.updateSociety(auth.societyId, societyUpdates);
@@ -39,9 +42,9 @@ export async function PUT(req: NextRequest) {
 
   // Update society settings
   const settingsUpdates: Partial<typeof society.settings> = {};
-  if (max_detour_minutes !== undefined) settingsUpdates.max_detour_minutes = Number(max_detour_minutes);
-  if (require_admin_approval !== undefined) settingsUpdates.require_admin_approval = Boolean(require_admin_approval);
-  if (allow_gender_preferences !== undefined) settingsUpdates.allow_gender_preferences = Boolean(allow_gender_preferences);
+  if (max_detour_minutes !== undefined) settingsUpdates.max_detour_minutes = max_detour_minutes;
+  if (require_admin_approval !== undefined) settingsUpdates.require_admin_approval = require_admin_approval;
+  if (allow_gender_preferences !== undefined) settingsUpdates.allow_gender_preferences = allow_gender_preferences;
   if (community_rules !== undefined) settingsUpdates.community_rules = community_rules;
   if (flat_format_pattern !== undefined) settingsUpdates.flat_format_pattern = flat_format_pattern;
   if (flat_format_example !== undefined) settingsUpdates.flat_format_example = flat_format_example;
@@ -51,7 +54,7 @@ export async function PUT(req: NextRequest) {
   }
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'SOCIETY_PROFILE_AND_SETTINGS_UPDATED',

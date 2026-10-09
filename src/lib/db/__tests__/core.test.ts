@@ -305,8 +305,8 @@ describe('SocietyApps V1 Core Test Suite', () => {
         'usr-admin-001'
       );
 
-      expect(resolved.status).toBe('RESOLVED');
-      expect(resolved.resolutionNotes).toBe('Discussed with resident; settled mutually');
+      expect(resolved?.status).toBe('RESOLVED');
+      expect(resolved?.resolutionNotes).toBe('Discussed with resident; settled mutually');
     });
   });
 

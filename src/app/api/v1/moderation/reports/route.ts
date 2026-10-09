@@ -2,24 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { ModerationReport } from '@/types';
-import { ModerationReportSchema } from '@/lib/validation/schemas';
+import { ModerationReportSchema, UpdateReportSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 // Submit a resident or ride violation report
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json().catch(() => ({}));
-  const parseResult = ModerationReportSchema.safeParse(body);
-  if (!parseResult.success) {
-    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid moderation report parameters');
-  }
+  const body = await parseBody(req, ModerationReportSchema);
+  if (body instanceof NextResponse) return body;
+  const { reportedUserId, journeyId, category, description } = body;
 
-  const { reportedUserId, journeyId, category, description } = parseResult.data;
+  if (reportedUserId === auth.userId) return errorResponse('You cannot report yourself');
 
   const repo = getRepository();
+  if (!(await repo.getMembership(auth.societyId, reportedUserId))) {
+    return errorResponse('Resident not found', 404);
+  }
+  if (journeyId && !(await repo.getRideOccurrence(auth.societyId, journeyId))) {
+    return errorResponse('Journey not found', 404);
+  }
+
   const report: ModerationReport = {
-    id: `rep-${Date.now()}`,
+    id: `rep-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     journeyId,
     reporterId: auth.userId,
@@ -48,7 +54,7 @@ export async function POST(req: NextRequest) {
 
 // List society moderation reports (Society Admin only)
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  const auth = await requireAuth(req, { permission: 'canModerateReports' });
   if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
@@ -58,12 +64,12 @@ export async function GET(req: NextRequest) {
 
 // Update moderation report status (Society Admin only)
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  const auth = await requireAuth(req, { permission: 'canModerateReports' });
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, UpdateReportSchema);
+  if (body instanceof NextResponse) return body;
   const { reportId, status, resolutionNotes } = body;
-  if (!reportId || !status) return errorResponse('Missing reportId or status');
 
   const repo = getRepository();
   const updated = await repo.updateModerationReportStatus(
@@ -73,6 +79,7 @@ export async function PATCH(req: NextRequest) {
     resolutionNotes,
     auth.userId
   );
+  if (!updated) return errorResponse('Report not found', 404);
 
   await repo.recordAuditEvent({
     id: `audit-${Date.now()}`,

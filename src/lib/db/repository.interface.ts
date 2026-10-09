@@ -123,7 +123,7 @@ export interface ISocietyRepository {
     status: ModerationReport['status'],
     resolutionNotes?: string,
     adminUserId?: string
-  ): Promise<ModerationReport>;
+  ): Promise<ModerationReport | null>;
 
   // Auditing
   recordAuditEvent(event: AuditEvent): Promise<void>;
@@ -132,6 +132,7 @@ export interface ISocietyRepository {
   // In-App & Push Notifications
   createNotification(notification: InAppNotification): Promise<InAppNotification>;
   listUserNotifications(societyId: string, userId: string): Promise<InAppNotification[]>;
-  markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<void>;
+  /** Returns false when the notification does not exist or belongs to someone else */
+  markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<boolean>;
   markAllNotificationsAsRead(societyId: string, userId: string): Promise<void>;
 }

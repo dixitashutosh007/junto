@@ -84,7 +84,7 @@ export const FeedbackSchema = z.object({
     'DRIVER_NO_SHOW',
     'OTHER',
   ]),
-  qualitativeTags: z.array(z.string()).default([]),
+  qualitativeTags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   privateNote: z.string().max(500).optional(),
 });
 
@@ -102,4 +102,166 @@ export const ModerationReportSchema = z.object({
     'OTHER',
   ]),
   description: z.string().min(5, 'Detailed description required').max(1000),
+});
+
+// ---------------------------------------------------------------------------
+// Shared building blocks
+// ---------------------------------------------------------------------------
+
+const IdSchema = z.string().trim().min(1).max(128);
+const LatSchema = z.number().min(-90).max(90);
+const LngSchema = z.number().min(-180).max(180);
+const CoordSchema = z.object({ lat: LatSchema, lng: LngSchema });
+const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid date YYYY-MM-DD required');
+const IsoDateTimeSchema = z.string().max(40).refine((v) => !Number.isNaN(Date.parse(v)), 'Valid date-time required');
+
+// ---------------------------------------------------------------------------
+// Rides
+// ---------------------------------------------------------------------------
+
+export const ListRidesQuerySchema = z.object({
+  date: z.union([DateSchema, z.literal('ALL')]).optional(),
+  mine: z.enum(['true', 'false']).optional(),
+});
+
+export const UpdateRideSchema = z.object({
+  journeyId: IdSchema,
+  destinationName: z.string().trim().min(2).max(200).optional(),
+  departureWindowStart: IsoDateTimeSchema.optional(),
+  departureWindowEnd: IsoDateTimeSchema.optional(),
+  totalSeats: z.number().int().min(1).max(6).optional(),
+  genderPreference: z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']).optional(),
+});
+
+export const JourneyIdQuerySchema = z.object({ journeyId: IdSchema });
+
+export const RespondToRequestSchema = z.object({
+  requestId: IdSchema,
+  action: z.enum(['ACCEPT', 'REJECT']),
+  note: z.string().trim().max(300).optional(),
+});
+
+export const RequestIdQuerySchema = z.object({ requestId: IdSchema });
+
+export const ListRequestsQuerySchema = z.object({ journeyId: IdSchema.optional() });
+
+export const FindMatchesSchema = z.object({
+  pickupName: z.string().trim().max(200).optional(),
+  pickupLat: LatSchema.optional(),
+  pickupLng: LngSchema.optional(),
+  dropoffName: z.string().trim().max(200).optional(),
+  dropoffLat: LatSchema.optional(),
+  dropoffLng: LngSchema.optional(),
+  preferredTime: IsoDateTimeSchema.optional(),
+  date: DateSchema.optional(),
+});
+
+export const FeedbackQuerySchema = z.object({ userId: IdSchema.optional() });
+
+// ---------------------------------------------------------------------------
+// Vehicles
+// ---------------------------------------------------------------------------
+
+export const CreateVehicleSchema = z.object({
+  type: z.enum(['CAR', 'SUV', 'HATCHBACK', 'SEDAN', 'TWO_WHEELER']).default('CAR'),
+  make: z.string().trim().min(1, 'Missing vehicle details').max(50),
+  model: z.string().trim().min(1, 'Missing vehicle details').max(50),
+  color: z.string().trim().max(30).optional(),
+  registrationNumber: z.string().trim().min(4, 'Missing vehicle details').max(20),
+  capacity: z.number().int().min(1).max(8).optional(),
+  mileageKmPerLitre: z.number().min(5).max(60).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export const MarkNotificationsSchema = z.union([
+  z.object({ markAll: z.literal(true) }),
+  z.object({ notificationId: IdSchema }),
+], { error: 'Provide either notificationId or markAll' });
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+export const UpdateReportSchema = z.object({
+  reportId: IdSchema,
+  status: z.enum(['OPEN', 'INVESTIGATING', 'RESOLVED', 'DISMISSED']),
+  resolutionNotes: z.string().trim().max(1000).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+export const ResidentsQuerySchema = z.object({ all: z.enum(['true', 'false']).optional() });
+
+export const ResidentActionSchema = z.object({
+  targetUserId: IdSchema,
+  action: z.enum(['APPROVE', 'REJECT', 'SUSPEND', 'BLOCK', 'REACTIVATE']),
+  reason: z.string().trim().max(500).optional(),
+});
+
+export const UpdateRbacSchema = z.object({
+  targetUserId: IdSchema,
+  targetSocietyId: IdSchema.optional(),
+  // SUPER_ADMIN is granted outside the app, never through this endpoint
+  role: z.enum(['RESIDENT', 'SOCIETY_ADMIN']),
+  permissions: z
+    .object({
+      canApproveResidents: z.boolean().optional(),
+      canManageSettings: z.boolean().optional(),
+      canModerateReports: z.boolean().optional(),
+      canViewAuditLogs: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * Admin-entered regex for flat numbers. Kept short and free of nested
+ * quantifiers such as (a+)+ that can hang the server (ReDoS).
+ */
+const FlatPatternSchema = z
+  .string()
+  .max(100, 'Flat format pattern must be at most 100 characters')
+  .refine((p) => {
+    try {
+      new RegExp(p);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Flat format pattern is not a valid regular expression')
+  .refine(
+    (p) => !/\([^)]*[+*}][^)]*\)\s*[+*{]/.test(p),
+    'Flat format pattern must not contain nested repetition'
+  );
+
+export const UpdateSocietySettingsSchema = z.object({
+  name: z.string().trim().min(2).max(100).optional(),
+  address: z.string().trim().max(300).optional(),
+  latitude: LatSchema.optional(),
+  longitude: LngSchema.optional(),
+  community_rules: z.string().max(5000).optional(),
+  max_detour_minutes: z.number().int().min(1).max(60).optional(),
+  require_admin_approval: z.boolean().optional(),
+  allow_gender_preferences: z.boolean().optional(),
+  flat_format_pattern: FlatPatternSchema.optional(),
+  flat_format_example: z.string().trim().max(50).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Places & routing
+// ---------------------------------------------------------------------------
+
+export const PlacesQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  placeId: z.string().trim().max(300).optional(),
+});
+
+export const RoutesMatrixSchema = z.object({
+  origin: CoordSchema,
+  destination: CoordSchema,
+  waypoints: z.array(CoordSchema).max(5).optional(),
 });

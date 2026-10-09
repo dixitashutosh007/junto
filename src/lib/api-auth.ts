@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { MembershipRole, MembershipStatus, User } from '@/types';
+import { AdminPermissions, MembershipRole, MembershipStatus, User } from '@/types';
 import {
   SESSION_COOKIE,
   SOCIETY_COOKIE,
@@ -15,6 +15,7 @@ export interface AuthContext {
   societyId: string;
   role: MembershipRole;
   status: MembershipStatus;
+  permissions?: AdminPermissions;
 }
 
 // Default society until multi-society support lands (roadmap task 4.1)
@@ -70,6 +71,7 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext | nu
     societyId: membership.societyId,
     role: membership.role,
     status: membership.status,
+    permissions: membership.permissions,
   };
 }
 
@@ -78,6 +80,20 @@ interface RequireAuthOptions {
   statuses?: MembershipStatus[];
   /** Roles allowed through; defaults to any role */
   roles?: MembershipRole[];
+  /**
+   * Admin permission required. SUPER_ADMIN always passes; a SOCIETY_ADMIN
+   * passes unless that permission has been explicitly turned off. Implies
+   * an admin role.
+   */
+  permission?: keyof AdminPermissions;
+}
+
+export const ADMIN_ROLES: MembershipRole[] = ['SOCIETY_ADMIN', 'SUPER_ADMIN'];
+
+export function hasAdminPermission(auth: AuthContext, permission: keyof AdminPermissions): boolean {
+  if (auth.role === 'SUPER_ADMIN') return true;
+  if (auth.role !== 'SOCIETY_ADMIN') return false;
+  return auth.permissions?.[permission] !== false;
 }
 
 /**
@@ -91,12 +107,13 @@ export async function requireAuth(
   req: NextRequest,
   options: RequireAuthOptions = {}
 ): Promise<AuthContext | NextResponse> {
-  const { statuses = ['ACTIVE'], roles } = options;
+  const { statuses = ['ACTIVE'], roles, permission } = options;
 
   const auth = await getAuthContext(req);
   if (!auth) return errorResponse('Unauthorized', 401);
   if (!statuses.includes(auth.status)) return errorResponse('Membership not active', 403);
   if (roles && !roles.includes(auth.role)) return errorResponse('Forbidden', 403);
+  if (permission && !hasAdminPermission(auth, permission)) return errorResponse('Forbidden', 403);
 
   return auth;
 }
@@ -106,4 +123,13 @@ export async function requireAuth(
  */
 export function errorResponse(message: string, status: number = 400) {
   return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * Logs the real error server-side and returns a generic 500, so internal
+ * details never reach the client.
+ */
+export function serverError(context: string, err: unknown) {
+  console.error(`${context}:`, err);
+  return errorResponse('Something went wrong. Please try again.', 500);
 }

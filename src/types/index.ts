@@ -22,6 +22,9 @@ export interface Society {
   createdAt: string;
 }
 
+/** Society fields safe to show to its members (no invite code or settings) */
+export type SocietySummary = Pick<Society, 'id' | 'slug' | 'name' | 'address'>;
+
 export type MembershipRole = 'RESIDENT' | 'SOCIETY_ADMIN' | 'SUPER_ADMIN';
 
 export type MembershipStatus =

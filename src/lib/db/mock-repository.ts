@@ -936,9 +936,9 @@ export class MockDynamoRepository implements ISocietyRepository {
     status: ModerationReport['status'],
     resolutionNotes?: string,
     adminUserId?: string
-  ): Promise<ModerationReport> {
+  ): Promise<ModerationReport | null> {
     const report = this.reports.find((r) => r.societyId === societyId && r.id === reportId);
-    if (!report) throw new Error('Report not found');
+    if (!report) return null;
     report.status = status;
     if (resolutionNotes) report.resolutionNotes = resolutionNotes;
     if (adminUserId) report.resolvedBy = adminUserId;
@@ -973,13 +973,13 @@ export class MockDynamoRepository implements ISocietyRepository {
     return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  async markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<void> {
+  async markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<boolean> {
     const key = `${societyId}#${notificationId}`;
     const notif = this.notifications.get(key);
-    if (notif && notif.userId === userId) {
-      notif.read = true;
-      this.notifications.set(key, notif);
-    }
+    if (!notif || notif.userId !== userId) return false;
+    notif.read = true;
+    this.notifications.set(key, notif);
+    return true;
   }
 
   async markAllNotificationsAsRead(societyId: string, userId: string): Promise<void> {

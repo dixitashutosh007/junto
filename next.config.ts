@@ -1,10 +1,36 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
+// Content Security Policy without nonces: nonces would force every page to
+// render dynamically, which conflicts with partial prerendering. Third-party
+// origins are limited to what Firebase phone auth, reCAPTCHA and App Check need.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data: https://www.gstatic.com",
+  "font-src 'self'",
+  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.google.com/recaptcha/",
+  "frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://*.firebaseapp.com",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+].join("; ");
+
 const securityHeaders = [
-  // Prevent clickjacking
+  {
+    key: "Content-Security-Policy",
+    value: contentSecurityPolicy,
+  },
+  // Prevent clickjacking (frame-ancestors above covers modern browsers)
   {
     key: "X-Frame-Options",
-    value: "SAMEORIGIN",
+    value: "DENY",
   },
   // Prevent MIME sniffing
   {

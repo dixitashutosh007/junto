@@ -3,16 +3,23 @@ import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { formatPublicJourneyView } from '@/lib/services/privacy';
 import { RideOccurrence } from '@/types';
-import { CreateRideSchema } from '@/lib/validation/schemas';
+import {
+  CreateRideSchema,
+  JourneyIdQuerySchema,
+  ListRidesQuerySchema,
+  UpdateRideSchema,
+} from '@/lib/validation/schemas';
+import { parseBody, parseQuery } from '@/lib/validation/parse';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get('date') || undefined;
-  const myRidesOnly = searchParams.get('mine') === 'true';
+  const query = parseQuery(req, ListRidesQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const date = query.date;
+  const myRidesOnly = query.mine === 'true';
 
   const repo = getRepository();
 
@@ -60,11 +67,8 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json().catch(() => ({}));
-  const parseResult = CreateRideSchema.safeParse(body);
-  if (!parseResult.success) {
-    return errorResponse(parseResult.error.issues[0]?.message || 'Invalid ride parameters');
-  }
+  const body = await parseBody(req, CreateRideSchema);
+  if (body instanceof NextResponse) return body;
 
   const {
     vehicleId,
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest) {
     totalSeats,
     genderPreference,
     visibility,
-  } = parseResult.data;
+  } = body;
 
   const repo = getRepository();
 
@@ -143,10 +147,9 @@ export async function PUT(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, UpdateRideSchema);
+  if (body instanceof NextResponse) return body;
   const { journeyId, destinationName, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } = body;
-
-  if (!journeyId) return errorResponse('Missing journeyId');
 
   const repo = getRepository();
   const existing = await repo.getRideOccurrence(auth.societyId, journeyId);
@@ -159,10 +162,12 @@ export async function PUT(req: NextRequest) {
   if (departureWindowEnd) updates.departureWindowEnd = departureWindowEnd;
   if (genderPreference) updates.genderPreference = genderPreference;
   if (totalSeats) {
-    const newTotal = Number(totalSeats);
     const bookedSeats = existing.totalSeats - existing.availableSeats;
-    updates.totalSeats = newTotal;
-    updates.availableSeats = Math.max(0, newTotal - bookedSeats);
+    if (totalSeats < bookedSeats) {
+      return errorResponse(`${bookedSeats} seat(s) are already booked on this ride`);
+    }
+    updates.totalSeats = totalSeats;
+    updates.availableSeats = totalSeats - bookedSeats;
   }
 
   const updated = await repo.updateRideOccurrence(auth.societyId, journeyId, auth.userId, updates);
@@ -175,10 +180,9 @@ export async function DELETE(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const journeyId = searchParams.get('journeyId');
-
-  if (!journeyId) return errorResponse('Missing journeyId');
+  const query = parseQuery(req, JourneyIdQuerySchema);
+  if (query instanceof NextResponse) return query;
+  const { journeyId } = query;
 
   const repo = getRepository();
   const existing = await repo.getRideOccurrence(auth.societyId, journeyId);

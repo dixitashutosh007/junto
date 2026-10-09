@@ -54,7 +54,7 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 
 ---
 
-## Phase 2 — Authorization & data exposure (🔴, 1–2 days)
+## Phase 2 — Authorization & data exposure (🔴, 1–2 days) ✅ Done
 
 | # | Task | Files |
 |---|------|-------|
@@ -69,6 +69,21 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 | 2.9 | Tighten `firestore.rules` (`users/*` readable only by self); add CSP header | `firestore.rules`, `next.config.ts` |
 
 **Done when:** each item has a negative test (wrong user / wrong society / wrong role → 403).
+
+**Implementation notes:**
+- Every route validates input through `parseBody` / `parseQuery` (`src/lib/validation/parse.ts`); malformed JSON is a 400, not a crash.
+- Admin routes use `requireAuth(req, { permission })`. The granular permissions set in the RBAC screen are now enforced (a SOCIETY_ADMIN keeps a permission unless it is explicitly turned off).
+- Resident status changes follow allowed transitions (e.g. only pending members can be approved); admins can't act on themselves, and only a platform admin can act on another admin. `SUPER_ADMIN` can't be granted through the API.
+- Firestore rules now deny all direct client access: the app only uses Firestore from the server (Admin SDK).
+- Content-Security-Policy is static (no nonces), because nonces would disable partial prerendering. It allows Firebase Auth, reCAPTCHA and App Check origins only.
+- Rate limits stay in memory per server instance. The hard stop on Maps spend is a quota cap in Google Cloud (owner step below), which is cheaper and more reliable than a shared counter store for one society.
+
+**Console steps for the owner (not code):**
+1. Deploy the new rules: `firebase deploy --only firestore:rules`.
+2. Google Cloud → APIs & Services → Places API and Routes API → Quotas: set a daily request cap, and restrict the `GOOGLE_MAPS_API_KEY` to those two APIs.
+3. After deploying, test SMS login once in production to confirm the CSP allows reCAPTCHA.
+
+**Known leftovers for Phase 3–4:** `rides/requests`, `feedback` and `report` pages still send hardcoded demo IDs (`jrn-001`, `usr-offerer-001`), so in production they will now get 403/404 instead of silently acting on demo data.
 
 ---
 

@@ -3,6 +3,8 @@ import { getRepository } from '@/lib/db';
 import { ONBOARDING_STATUSES, requireAuth, errorResponse } from '@/lib/api-auth';
 import { Vehicle } from '@/types';
 import { validateIndianRegistration, formatIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { CreateVehicleSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
@@ -18,12 +20,9 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, CreateVehicleSchema);
+  if (body instanceof NextResponse) return body;
   const { type, make, model, color, registrationNumber, capacity, mileageKmPerLitre } = body;
-
-  if (!make || !model || !registrationNumber) {
-    return errorResponse('Missing vehicle details');
-  }
 
   // Indian standard vehicle number validation
   const regCheck = validateIndianRegistration(registrationNumber);
@@ -33,26 +32,20 @@ export async function POST(req: NextRequest) {
 
   const formattedReg = formatIndianRegistration(registrationNumber);
 
-  // Validate or default mileage (km/L)
-  let parsedMileage = 15;
-  if (mileageKmPerLitre !== undefined && mileageKmPerLitre !== null && mileageKmPerLitre !== '') {
-    const num = Number(mileageKmPerLitre);
-    if (!isNaN(num) && num >= 5 && num <= 60) {
-      parsedMileage = Math.round(num * 10) / 10;
-    }
-  }
+  // Mileage (km/L) is range-checked by the schema; default for typical Indian cars
+  const parsedMileage = mileageKmPerLitre !== undefined ? Math.round(mileageKmPerLitre * 10) / 10 : 15;
 
   const repo = getRepository();
   const vehicle: Vehicle = {
-    id: `veh-${Date.now()}`,
+    id: `veh-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     userId: auth.userId,
-    type: type || 'CAR',
+    type,
     make,
     model,
     color: color || 'White',
     registrationNumber: formattedReg,
-    capacity: capacity ? Number(capacity) : 4,
+    capacity: capacity ?? (type === 'TWO_WHEELER' ? 1 : 4),
     mileageKmPerLitre: parsedMileage,
     isActive: true,
     createdAt: new Date().toISOString(),

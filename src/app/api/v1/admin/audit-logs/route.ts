@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { requireAuth, errorResponse } from '@/lib/api-auth';
+import { requireAuth } from '@/lib/api-auth';
 
 // List activity logs for the society (Society Admin & App Admin only)
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req, { roles: ['SOCIETY_ADMIN', 'SUPER_ADMIN'] });
+  const auth = await requireAuth(req, { permission: 'canViewAuditLogs' });
   if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();

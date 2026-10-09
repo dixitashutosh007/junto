@@ -1,12 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Society, SocietyMembership } from '@/types';
+import { User, Society, SocietyMembership, SocietySummary } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   society: Society | null;
-  societiesList: Society[];
+  societiesList: SocietySummary[];
   membership: SocietyMembership | null;
   activePersona: string; // 'usr-offerer-001' | 'usr-seeker-001' | 'usr-admin-001' | 'usr-app-admin-001'
   activeSocietyId: string;
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeSocietyId, setActiveSocietyId] = useState<string>('soc-ggh-001');
   const [user, setUser] = useState<User | null>(null);
   const [society, setSociety] = useState<Society | null>(null);
-  const [societiesList, setSocietiesList] = useState<Society[]>([]);
+  const [societiesList, setSocietiesList] = useState<SocietySummary[]>([]);
   const [membership, setMembership] = useState<SocietyMembership | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 

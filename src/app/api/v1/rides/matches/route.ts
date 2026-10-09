@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { requireAuth, errorResponse } from '@/lib/api-auth';
+import { requireAuth } from '@/lib/api-auth';
 import { evaluateCommuteMatch } from '@/lib/services/matching';
+import { FindMatchesSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, FindMatchesSchema);
+  if (body instanceof NextResponse) return body;
   const { pickupName, pickupLat, pickupLng, dropoffName, dropoffLat, dropoffLng, preferredTime, date } = body;
 
   const repo = getRepository();

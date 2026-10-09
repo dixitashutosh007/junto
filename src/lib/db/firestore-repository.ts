@@ -562,13 +562,14 @@ export class FirestoreRepository implements ISocietyRepository {
     status: ModerationReport['status'],
     resolutionNotes?: string,
     adminUserId?: string
-  ): Promise<ModerationReport> {
+  ): Promise<ModerationReport | null> {
     const ref = this.db
       .collection('societies')
       .doc(societyId)
       .collection('moderation_reports')
       .doc(reportId);
-    const updates: any = { status };
+    if (!(await ref.get()).exists) return null;
+    const updates: Partial<ModerationReport> = { status };
     if (resolutionNotes) updates.resolutionNotes = resolutionNotes;
     if (adminUserId) updates.resolvedBy = adminUserId;
     await ref.update(updates);
@@ -623,13 +624,16 @@ export class FirestoreRepository implements ISocietyRepository {
     societyId: string,
     notificationId: string,
     userId: string
-  ): Promise<void> {
-    await this.db
+  ): Promise<boolean> {
+    const ref = this.db
       .collection('societies')
       .doc(societyId)
       .collection('notifications')
-      .doc(notificationId)
-      .update({ read: true });
+      .doc(notificationId);
+    const doc = await ref.get();
+    if (!doc.exists || (doc.data() as InAppNotification).userId !== userId) return false;
+    await ref.update({ read: true });
+    return true;
   }
 
   async markAllNotificationsAsRead(societyId: string, userId: string): Promise<void> {
