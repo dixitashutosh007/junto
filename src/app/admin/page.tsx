@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api-client';
 import { AdminPermissions } from '@/types';
 import { ActivityLogTab } from './_components/ActivityLogTab';
+import { InviteCard } from './_components/InviteCard';
 import { MembersTab } from './_components/MembersTab';
 import { ModerationTab } from './_components/ModerationTab';
 import { RbacTab } from './_components/RbacTab';
@@ -191,6 +192,7 @@ function AdminPortal() {
           </div>
 
           <div role="tabpanel" className="flex-1 flex flex-col">
+            {currentTab === 'MEMBERS' && society && <InviteCard society={society} notify={notify} />}
             {currentTab === 'MEMBERS' && (
               <MembersTab
                 pendingMembers={pendingMembers}

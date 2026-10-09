@@ -44,6 +44,12 @@ export const CreateRideRequestSchema = z.object({
 
 const GenderSchema = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']);
 
+// Society search for a newly verified number that belongs to no society yet
+export const SocietySearchSchema = z.object({
+  idToken: z.string().min(1).max(4096),
+  query: z.string().trim().min(2, 'Type at least 2 letters of your society name').max(60),
+});
+
 // Session creation (phone OTP sign-in)
 export const CreateSessionSchema = z.object({
   idToken: z.string().min(1).max(4096),

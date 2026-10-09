@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, Car, Check, CheckCircle2, Clock, Loader2, Repeat, Save, Search } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Car, Check, CheckCircle2, Clock, Loader2, LogOut, Repeat, Save, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
@@ -21,7 +22,7 @@ const COMMUTE_OPTIONS: { value: CommuteIntent; label: string; icon: typeof Searc
 ];
 
 export default function ProfilePage() {
-  const { user, membership, society, refreshAuth } = useAuth();
+  const { user, membership, society, refreshAuth, logout } = useAuth();
 
   if (!user) {
     return (
@@ -39,6 +40,7 @@ export default function ProfilePage() {
       membership={membership}
       society={society}
       refreshAuth={refreshAuth}
+      logout={logout}
     />
   );
 }
@@ -48,9 +50,12 @@ interface ProfileFormProps {
   membership: SocietyMembership | null;
   society: Society | null;
   refreshAuth: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-function ProfileForm({ user, membership, society, refreshAuth }: ProfileFormProps) {
+function ProfileForm({ user, membership, society, refreshAuth, logout }: ProfileFormProps) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
   const [flatNumber, setFlatNumber] = useState(membership?.flatNumber ?? '');
   const [commuteIntent, setCommuteIntent] = useState<CommuteIntent>(user.commuteIntent ?? 'SEEKER');
@@ -324,6 +329,20 @@ function ProfileForm({ user, membership, society, refreshAuth }: ProfileFormProp
           </button>
         </div>
       </form>
+
+      <button
+        type="button"
+        disabled={signingOut}
+        onClick={async () => {
+          setSigningOut(true);
+          await logout();
+          router.replace('/');
+        }}
+        className="mt-6 w-full py-3 rounded-2xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60"
+      >
+        {signingOut ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <LogOut className="w-4 h-4" aria-hidden="true" />}
+        <span>Sign out</span>
+      </button>
 
       <PhoneChangeDialog
         open={dialog === 'PHONE'}

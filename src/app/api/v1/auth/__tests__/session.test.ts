@@ -69,11 +69,12 @@ describe('POST /api/v1/auth/session (production)', () => {
     expect(setCookie).toMatch(/Secure/i);
   });
 
-  it('asks a new phone number without an invite code to use the invite link', async () => {
+  it('asks a new phone number without an invite code to find its society', async () => {
     registerIdToken('new', { uid: 'firebase-new', phone_number: '+919700000001' });
 
     const res = await login('new');
     expect(res.status).toBe(404);
+    expect((await res.json()).needsSociety).toBe(true);
     expect(await repo.getUserById('firebase-new')).toBeNull();
   });
 
