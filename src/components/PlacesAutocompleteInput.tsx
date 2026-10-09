@@ -1,7 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { MapPin, X, Loader2 } from 'lucide-react';
 import { PlaceSuggestion } from '@/lib/services/places-data';
 
@@ -24,6 +24,7 @@ export function PlacesAutocompleteInput({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputId = useId();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -102,7 +103,11 @@ export function PlacesAutocompleteInput({
 
   return (
     <div ref={wrapperRef} className="relative w-full space-y-1">
-      {label && <label className="text-xs font-semibold text-zinc-700 block">{label}</label>}
+      {label && (
+        <label htmlFor={inputId} className="text-xs font-semibold text-zinc-700 block">
+          {label}
+        </label>
+      )}
 
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
@@ -110,6 +115,7 @@ export function PlacesAutocompleteInput({
         </div>
 
         <input
+          id={inputId}
           type="text"
           required={required}
           value={value}

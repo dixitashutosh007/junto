@@ -4,13 +4,19 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsClient } from '@/hooks/useIsClient';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { MapPin, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Vehicle } from '@/types';
-import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
-import { PlaceSuggestion } from '@/lib/services/places-data';
-import { istDateTime, upcomingIstDays } from '@/lib/utils/time';
+import {
+  EMPTY_PLACE,
+  RouteEndpoint,
+  RouteEndpoints,
+  SOCIETY_ENDPOINT,
+  routeDirection,
+} from '@/components/RouteEndpoints';
+import { TimeSelect } from '@/components/ui/TimeSelect';
+import { addMinutesHHMM, istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
   const { activePersona, society } = useAuth();
@@ -26,8 +32,9 @@ export default function OfferRidePage() {
   const [pickedDate, setJourneyDate] = useState('');
   // Defaults to tomorrow until the offerer picks a day
   const journeyDate = pickedDate || next7Days[1]?.dateStr || '';
-  const [destinationName, setDestinationName] = useState('');
-  const [destinationPlace, setDestinationPlace] = useState<PlaceSuggestion | null>(null);
+  // Starts at the society by default; either end can change, and swapping makes a return trip
+  const [from, setFrom] = useState<RouteEndpoint>(SOCIETY_ENDPOINT);
+  const [to, setTo] = useState<RouteEndpoint>(EMPTY_PLACE);
   const [formError, setFormError] = useState('');
   const [timeWindowStart, setTimeWindowStart] = useState('08:00');
   const [timeWindowEnd, setTimeWindowEnd] = useState('08:20');
@@ -55,14 +62,33 @@ export default function OfferRidePage() {
     if (!selectedVehicleId) return;
     setFormError('');
 
-    if (!destinationPlace) {
+    if (!society) return;
+    if (from.kind === 'PLACE' && !from.place) {
+      setFormError('Please choose your starting point from the suggestions list.');
+      return;
+    }
+    if (to.kind === 'PLACE' && !to.place) {
       setFormError('Please choose your destination from the suggestions list.');
       return;
     }
-    if (timeWindowEnd < timeWindowStart) {
-      setFormError('The departure window must end after it starts.');
+    if (timeWindowEnd <= timeWindowStart) {
+      setFormError('The latest departure time must be after the earliest.');
       return;
     }
+
+    const origin =
+      from.kind === 'PLACE' && from.place
+        ? { originName: from.name, originLat: from.place.lat, originLng: from.place.lng }
+        : {}; // the server starts rides at the society
+    const destination =
+      to.kind === 'PLACE' && to.place
+        ? {
+            destinationName: to.name,
+            destinationPlaceId: to.place.placeId,
+            destinationLat: to.place.lat,
+            destinationLng: to.place.lng,
+          }
+        : { destinationName: society.name, destinationLat: society.latitude, destinationLng: society.longitude };
 
     setIsSubmitting(true);
     const dateStr = journeyDate || next7Days[0]?.dateStr;
@@ -76,10 +102,9 @@ export default function OfferRidePage() {
         body: JSON.stringify({
           vehicleId: selectedVehicleId,
           journeyDate: dateStr,
-          destinationName,
-          destinationPlaceId: destinationPlace.placeId,
-          destinationLat: destinationPlace.lat,
-          destinationLng: destinationPlace.lng,
+          direction: routeDirection(to),
+          ...origin,
+          ...destination,
           departureWindowStart: istDateTime(dateStr, timeWindowStart),
           departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
           totalSeats: seats,
@@ -132,16 +157,17 @@ export default function OfferRidePage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
-          {/* Origin */}
-          <div className="p-3.5 bg-zinc-50 rounded-xl border border-zinc-200">
-            <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">
-              Origin (Starting Point)
-            </label>
-            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
-              <MapPin className="w-4 h-4 text-emerald-600" />
-              <span>{society?.name ?? 'Your society'}</span>
-            </div>
-          </div>
+          {/* From / To, with a swap for the trip back to the society */}
+          <RouteEndpoints
+            societyName={society?.name ?? 'Your society'}
+            from={from}
+            to={to}
+            required
+            onChange={(nextFrom, nextTo) => {
+              setFrom(nextFrom);
+              setTo(nextTo);
+            }}
+          />
 
           {/* Date Selection (Next 7 Days) */}
           <div className="space-y-1.5">
@@ -186,40 +212,32 @@ export default function OfferRidePage() {
             </div>
           </div>
 
-          {/* Destination */}
-          <PlacesAutocompleteInput
-            value={destinationName}
-            onChange={(val, suggestion) => {
-              setDestinationName(val);
-              setDestinationPlace(suggestion ?? null);
-            }}
-            placeholder="Search Tech Park, IT corridor, or hub..."
-            label="Destination (Workplace / Hub)"
-            required
-          />
-
           {/* Departure Time Window */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-zinc-700">Departure Window</label>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label htmlFor="time-earliest" className="text-[10px] text-zinc-500 block mb-0.5">Earliest</label>
-                <input
+                <TimeSelect
                   id="time-earliest"
-                  type="time"
                   value={timeWindowStart}
-                  onChange={(e) => setTimeWindowStart(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  until="23:50"
+                  onChange={(t) => {
+                    setTimeWindowStart(t);
+                    // The latest time must stay after the earliest
+                    if (timeWindowEnd <= t) setTimeWindowEnd(addMinutesHHMM(t, 15));
+                  }}
+                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
                 <label htmlFor="time-latest" className="text-[10px] text-zinc-500 block mb-0.5">Latest</label>
-                <input
+                <TimeSelect
                   id="time-latest"
-                  type="time"
                   value={timeWindowEnd}
-                  onChange={(e) => setTimeWindowEnd(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  after={timeWindowStart}
+                  onChange={setTimeWindowEnd}
+                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>

@@ -4,18 +4,30 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsClient } from '@/hooks/useIsClient';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
+import { TimeSelect } from '@/components/ui/TimeSelect';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Search, MapPin, Clock, ArrowLeft, CheckCircle2, Check } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
-import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import {
+  EMPTY_PLACE,
+  RouteEndpoint,
+  RouteEndpoints,
+  SOCIETY_ENDPOINT,
+  routeDirection,
+} from '@/components/RouteEndpoints';
 
 export default function FindRidePage() {
   const { society } = useAuth();
-  const [destination, setDestination] = useState('Manyata Tech Park');
+  // From the society by default; swap to find rides back to the society
+  const [from, setFrom] = useState<RouteEndpoint>(SOCIETY_ENDPOINT);
+  const [to, setTo] = useState<RouteEndpoint>(EMPTY_PLACE);
   const [time, setTime] = useState('08:15');
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
+  const direction = routeDirection(to);
+  // Older rides have no direction stored; they all left from the society
+  const visibleRides = rides.filter((r) => (r.direction ?? 'OUTBOUND_SOCIETY') === direction);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requestedRides, setRequestedRides] = useState<Record<string, boolean>>({});
@@ -89,13 +101,15 @@ export default function FindRidePage() {
 
       {/* Search Filter Form */}
       <form onSubmit={handleSearch} className="space-y-3 mb-5 p-4 rounded-2xl bg-zinc-50 border border-zinc-200">
-        <div>
-          <label className="text-[11px] font-semibold text-zinc-600 block mb-1">Origin</label>
-          <div className="flex items-center gap-2 p-2.5 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-800">
-            <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-medium">{society?.name ?? 'Your society'}</span>
-          </div>
-        </div>
+        <RouteEndpoints
+          societyName={society?.name ?? 'Your society'}
+          from={from}
+          to={to}
+          onChange={(nextFrom, nextTo) => {
+            setFrom(nextFrom);
+            setTo(nextTo);
+          }}
+        />
 
         {/* 7-Days Date Selection Pills */}
         <div>
@@ -128,21 +142,13 @@ export default function FindRidePage() {
           </div>
         </div>
 
-        <PlacesAutocompleteInput
-          value={destination}
-          onChange={(val) => setDestination(val)}
-          placeholder="Search Manyata, Bagmane, Electronic City..."
-          label="Destination Hub"
-        />
-
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label htmlFor="time" className="text-[11px] font-semibold text-zinc-600 block mb-1">Time</label>
-            <input
+            <TimeSelect
               id="time"
-              type="time"
               value={time}
-              onChange={(e) => setTime(e.target.value)}
+              onChange={setTime}
               className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white"
             />
           </div>
@@ -169,20 +175,20 @@ export default function FindRidePage() {
       {/* Results */}
       <div className="flex-1">
         <h2 className="text-xs font-bold text-zinc-900 uppercase tracking-wider mb-2.5">
-          Available Results {searched && `(${rides.length})`}
+          Available Results {searched && `(${visibleRides.length})`}
         </h2>
 
         {loading ? (
           <Loading label="Searching society rides…" />
         ) : loadError ? (
           <LoadError message={loadError} onRetry={() => void handleSearch()} />
-        ) : rides.length === 0 ? (
+        ) : visibleRides.length === 0 ? (
           <div className="py-10 text-center text-xs text-zinc-500">
             {searched ? 'No matching rides found for this route window.' : 'Enter your destination to find rides.'}
           </div>
         ) : (
           <div className="space-y-3">
-            {rides.map((ride) => {
+            {visibleRides.map((ride) => {
               const isRequested = requestedRides[ride.id] || ride.userRequestStatus === 'REQUESTED';
               const isAccepted = ride.userRequestStatus === 'ACCEPTED';
 
@@ -223,8 +229,10 @@ export default function FindRidePage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 font-medium text-zinc-900">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{ride.destinationName}</span>
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                      <span>
+                        {ride.originName} → {ride.destinationName}
+                      </span>
                     </div>
                     {ride.fuelSharePointsEstimate && (
                       <div className="pt-1.5 mt-1 border-t border-zinc-200/60 flex items-center justify-between text-[11px]">
