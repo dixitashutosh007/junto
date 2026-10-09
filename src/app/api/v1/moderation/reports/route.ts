@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const saved = await repo.createModerationReport(report);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'INCIDENT_REPORTED',
@@ -82,7 +82,7 @@ export async function PATCH(req: NextRequest) {
   if (!updated) return errorResponse('Report not found', 404);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'MODERATION_REPORT_RESOLVED',

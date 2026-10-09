@@ -179,9 +179,10 @@ export function NotificationBell() {
                             {notif.title}
                           </p>
                           <span className="text-[9px] text-zinc-400">
-                            {new Date(notif.createdAt).toLocaleTimeString([], {
+                            {new Date(notif.createdAt).toLocaleTimeString('en-IN', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              timeZone: 'Asia/Kolkata',
                             })}
                           </span>
                         </div>

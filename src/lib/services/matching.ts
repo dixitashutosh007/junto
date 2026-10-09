@@ -131,3 +131,20 @@ export function evaluateCommuteMatch(
     createdAt: new Date().toISOString(),
   };
 }
+
+// Road distance is roughly 1.3x the straight line in Bangalore; average
+// commute speed about 25 km/h (2.4 minutes per km)
+const ROAD_FACTOR = 1.3;
+const MINUTES_PER_KM = 2.4;
+
+/**
+ * Offline estimate of driving distance and time between two points, used
+ * when no routing API result is available.
+ */
+export function estimateRoute(
+  origin: RouteCoord,
+  destination: RouteCoord
+): { distanceKm: number; durationMinutes: number } {
+  const distanceKm = Math.max(1, Math.round(calculateHaversineDistanceKm(origin, destination) * ROAD_FACTOR));
+  return { distanceKm, durationMinutes: Math.round(distanceKm * MINUTES_PER_KM) };
+}

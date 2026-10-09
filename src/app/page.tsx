@@ -1,5 +1,6 @@
 'use client';
 
+import { formatIstTime, istDateString } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -469,13 +470,13 @@ export default function HomePage() {
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="font-bold text-slate-900">
-                          {new Date(ride.departureWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowStart)}
                           {' – '}
-                          {new Date(ride.departureWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowEnd)}
                         </span>
                       </div>
                       <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                        {ride.journeyDate === new Date().toISOString().split('T')[0]
+                        {ride.journeyDate === istDateString()
                           ? 'Today'
                           : ride.journeyDate}
                       </span>

@@ -7,6 +7,14 @@ import {
   Query,
 } from 'firebase-admin/firestore';
 import {
+  BookingResult,
+  RideCancellationResult,
+  planAccept,
+  planCancelRide,
+  planClose,
+} from '@/lib/services/seat-booking';
+import { istDateString } from '@/lib/utils/time';
+import {
   Society,
   User,
   SocietyMembership,
@@ -341,6 +349,8 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('occurrences')
       .where('status', '==', 'OPEN');
 
+    // FULL rides are hidden: seekers can only request rides with free seats
+
     if (direction) {
       query = query.where('direction', '==', direction);
     }
@@ -348,7 +358,7 @@ export class FirestoreRepository implements ISocietyRepository {
     const snap = await query.get();
     let rides = snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideOccurrence);
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = istDateString();
     if (date && date !== 'ALL') {
       rides = rides.filter((r: RideOccurrence) => r.journeyDate === date);
     } else {
@@ -370,22 +380,6 @@ export class FirestoreRepository implements ISocietyRepository {
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideOccurrence);
   }
 
-  async cancelRideOccurrence(
-    societyId: string,
-    journeyId: string,
-    userId: string,
-    reason: string
-  ): Promise<RideOccurrence> {
-    const ref = this.db
-      .collection('societies')
-      .doc(societyId)
-      .collection('occurrences')
-      .doc(journeyId);
-    await ref.update({ status: 'CANCELLED', cancellationReason: reason });
-    const doc = await ref.get();
-    return doc.data() as RideOccurrence;
-  }
-
   async updateRideOccurrence(
     societyId: string,
     journeyId: string,
@@ -402,36 +396,30 @@ export class FirestoreRepository implements ISocietyRepository {
     return doc.data() as RideOccurrence;
   }
 
-  async deleteRideOccurrence(societyId: string, journeyId: string, userId: string): Promise<void> {
-    await this.db
-      .collection('societies')
-      .doc(societyId)
-      .collection('occurrences')
-      .doc(journeyId)
-      .delete();
-  }
-
-  async updateAvailableSeats(
+  async cancelRideWithRequests(
     societyId: string,
     journeyId: string,
-    seatDelta: number
-  ): Promise<RideOccurrence> {
-    const ref = this.db
-      .collection('societies')
-      .doc(societyId)
-      .collection('occurrences')
-      .doc(journeyId);
+    offererUserId: string,
+    reason: string
+  ): Promise<RideCancellationResult> {
+    const societyRef = this.db.collection('societies').doc(societyId);
+    const journeyRef = societyRef.collection('occurrences').doc(journeyId);
+    const requestsQuery = societyRef.collection('requests').where('journeyId', '==', journeyId);
 
-    return await this.db.runTransaction(async (transaction: Transaction) => {
-      const doc = await transaction.get(ref);
-      if (!doc.exists) throw new Error('Journey not found');
-      const data = doc.data() as RideOccurrence;
-      const newSeats = Math.max(0, data.availableSeats + seatDelta);
-      transaction.update(ref, {
-        availableSeats: newSeats,
-        status: newSeats === 0 ? 'FULL' : 'OPEN',
-      });
-      return { ...data, availableSeats: newSeats, status: newSeats === 0 ? 'FULL' : 'OPEN' };
+    return this.db.runTransaction(async (tx: Transaction) => {
+      const journeySnap = await tx.get(journeyRef);
+      const requestsSnap = await tx.get(requestsQuery);
+      const journey = journeySnap.exists ? (journeySnap.data() as RideOccurrence) : null;
+      const requests = requestsSnap.docs.map((d) => d.data() as RideRequest);
+
+      const result = planCancelRide(journey, requests, offererUserId, reason, new Date().toISOString());
+      if (result.ok) {
+        tx.set(journeyRef, result.journey);
+        for (const r of result.affectedRequests) {
+          tx.set(societyRef.collection('requests').doc(r.id), r);
+        }
+      }
+      return result;
     });
   }
 
@@ -477,22 +465,55 @@ export class FirestoreRepository implements ISocietyRepository {
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideRequest);
   }
 
-  async updateRequestStatus(
+  async acceptRideRequest(
     societyId: string,
     requestId: string,
-    status: RideRequest['status'],
+    offererUserId: string,
     note?: string
-  ): Promise<RideRequest> {
-    const ref = this.db
-      .collection('societies')
-      .doc(societyId)
-      .collection('requests')
-      .doc(requestId);
-    const updates: any = { status, updatedAt: new Date().toISOString() };
-    if (note) updates.responseNote = note;
-    await ref.update(updates);
-    const doc = await ref.get();
-    return doc.data() as RideRequest;
+  ): Promise<BookingResult> {
+    return this.applyBooking(societyId, requestId, (journey, request, now) =>
+      planAccept(journey, request, offererUserId, note, now)
+    );
+  }
+
+  async closeRideRequest(
+    societyId: string,
+    requestId: string,
+    actor: { userId: string; as: 'OFFERER' | 'SEEKER' },
+    note?: string
+  ): Promise<BookingResult> {
+    return this.applyBooking(societyId, requestId, (journey, request, now) =>
+      planClose(journey, request, actor, note, now)
+    );
+  }
+
+  /**
+   * Reads the request and its journey in one transaction, applies the
+   * booking plan and writes both back, so concurrent accepts can't
+   * oversell seats (Firestore retries the transaction on conflict).
+   */
+  private applyBooking(
+    societyId: string,
+    requestId: string,
+    plan: (journey: RideOccurrence | null, request: RideRequest | null, now: string) => BookingResult
+  ): Promise<BookingResult> {
+    const societyRef = this.db.collection('societies').doc(societyId);
+    const requestRef = societyRef.collection('requests').doc(requestId);
+
+    return this.db.runTransaction(async (tx: Transaction) => {
+      const requestSnap = await tx.get(requestRef);
+      const request = requestSnap.exists ? (requestSnap.data() as RideRequest) : null;
+      const journeyRef = request ? societyRef.collection('occurrences').doc(request.journeyId) : null;
+      const journeySnap = journeyRef ? await tx.get(journeyRef) : null;
+      const journey = journeySnap?.exists ? (journeySnap.data() as RideOccurrence) : null;
+
+      const result = plan(journey, request, new Date().toISOString());
+      if (result.ok && journeyRef) {
+        tx.set(journeyRef, result.journey);
+        tx.set(requestRef, result.request);
+      }
+      return result;
+    });
   }
 
   // Matches
@@ -586,11 +607,11 @@ export class FirestoreRepository implements ISocietyRepository {
     const snap = await this.db
       .collection('audit_events')
       .where('societyId', '==', societyId)
+      // Newest 100 events; needs the composite index in firestore.indexes.json
+      .orderBy('createdAt', 'desc')
       .limit(100)
       .get();
-    return snap.docs
-      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as AuditEvent)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as AuditEvent);
   }
 
   // In-App & Push Notifications

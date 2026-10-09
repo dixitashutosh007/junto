@@ -107,10 +107,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Default fallback to central Bangalore coordinates
-    return NextResponse.json({
-      location: { lat: 12.9716, lng: 77.5946, formattedAddress: 'Bangalore, Karnataka' },
-    });
+    // Never guess a location: the client asks the user to pick again
+    return NextResponse.json({ error: 'Location not found for this place' }, { status: 404 });
   }
 
   // 2. Query Google Places Predictions if API Key exists
@@ -131,6 +129,7 @@ export async function GET(req: NextRequest) {
             placeId: p.place_id,
             primaryText: p.structured_formatting?.main_text || p.description,
             secondaryText: p.structured_formatting?.secondary_text || 'Bangalore, Karnataka',
+            // Placeholder: the client resolves exact coordinates via ?placeId=
             lat: 12.9716,
             lng: 77.5946,
           }));
@@ -178,20 +177,22 @@ export async function GET(req: NextRequest) {
         if (osmData.features && Array.isArray(osmData.features)) {
           osmSuggestions = osmData.features
             .filter((f: PhotonFeature) => f.properties?.countrycode === 'IN' || !f.properties?.countrycode)
+            // Skip results without coordinates rather than guessing a location
+            .filter((f: PhotonFeature) => Array.isArray(f.geometry?.coordinates))
             .map((f: PhotonFeature, idx: number) => {
               const p = f.properties || {};
-              const coords = f.geometry?.coordinates || [77.5946, 12.9716];
+              const coords = f.geometry!.coordinates!;
               const name = p.name || p.street || p.district || query;
               const secondaryParts = [p.locality, p.district, p.city || 'Bengaluru', p.state]
                 .filter(Boolean)
                 .filter((v, i, a) => a.indexOf(v) === i && v !== name);
 
               return {
-                placeId: `osm_${p.osm_type || 'N'}_${p.osm_id || idx}_${Date.now()}`,
+                placeId: `osm_${p.osm_type || 'N'}_${p.osm_id ?? idx}`,
                 primaryText: name,
                 secondaryText: secondaryParts.length > 0 ? secondaryParts.join(', ') : 'Bangalore, Karnataka',
-                lat: coords[1] || 12.9716,
-                lng: coords[0] || 77.5946,
+                lat: coords[1],
+                lng: coords[0],
               };
             });
         }

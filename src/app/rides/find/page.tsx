@@ -1,5 +1,6 @@
 'use client';
 
+import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Search, MapPin, Clock, ArrowLeft, Filter, Car, CheckCircle2, Check } from 'lucide-react';
@@ -20,16 +21,7 @@ export default function FindRidePage() {
   const [next7Days, setNext7Days] = useState<{ dateStr: string; label: string; weekday: string }[]>([]);
 
   useEffect(() => {
-    const today = new Date();
-    const daysList = [{ dateStr: 'ALL', label: 'All', weekday: 'Any Day' }];
-    for (let i = 0; i <= 7; i++) {
-      const day = new Date();
-      day.setDate(today.getDate() + i);
-      const dateStr = day.toISOString().split('T')[0];
-      const weekday = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : day.toLocaleDateString([], { weekday: 'short' });
-      const label = day.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      daysList.push({ dateStr, label, weekday });
-    }
+    const daysList = [{ dateStr: 'ALL', label: 'All', weekday: 'Any Day' }, ...upcomingIstDays(7)];
     setNext7Days(daysList);
   }, []);
 
@@ -215,13 +207,13 @@ export default function FindRidePage() {
                       <div className="flex items-center gap-1.5 font-semibold text-zinc-800">
                         <Clock className="w-3.5 h-3.5 text-zinc-400" />
                         <span>
-                          {new Date(ride.departureWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowStart)}
                           {' – '}
-                          {new Date(ride.departureWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatIstTime(ride.departureWindowEnd)}
                         </span>
                       </div>
                       <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                        {ride.journeyDate === new Date().toISOString().split('T')[0] ? 'Today' : ride.journeyDate}
+                        {relativeDayLabel(ride.journeyDate)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 font-medium text-zinc-900">

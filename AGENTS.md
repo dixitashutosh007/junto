@@ -44,7 +44,7 @@ Junto is a ride-sharing app for residents of a housing society. Read `docs/PRODU
 - Never commit secrets; service-account keys stay in Amplify environment variables and never use the `NEXT_PUBLIC_` prefix.
 
 **Data conventions:**
-- Seat counts change only inside a Firestore transaction that also checks the request status.
-- Times are Asia/Kolkata: store ISO strings with `+05:30`, format with `timeZone: 'Asia/Kolkata'`.
+- Seat counts change only through `acceptRideRequest` / `closeRideRequest` / `cancelRideWithRequests`, which apply the rules in `src/lib/services/seat-booking.ts` atomically.
+- Times are Asia/Kolkata: use `src/lib/utils/time.ts` (`istDateTime`, `istDateString`, `formatIstTime`); never `toISOString().split('T')[0]` or `toLocaleTimeString` without a time zone.
 - IDs come from `crypto.randomUUID()`, not `Date.now()`.
 - No placeholder data (flat numbers, distances, coordinates) in production responses; fail or mark the value as unknown.

@@ -12,6 +12,7 @@ import {
   AuditEvent,
   InAppNotification,
 } from '@/types';
+import { BookingResult, RideCancellationResult } from '@/lib/services/seat-booking';
 
 /**
  * SocietyApps Multi-Tenant Repository Interface
@@ -73,40 +74,39 @@ export interface ISocietyRepository {
     direction?: RideOccurrence['direction']
   ): Promise<RideOccurrence[]>;
   listUserRides(societyId: string, userId: string): Promise<RideOccurrence[]>;
-  cancelRideOccurrence(
-    societyId: string,
-    journeyId: string,
-    userId: string,
-    reason: string
-  ): Promise<RideOccurrence>;
   updateRideOccurrence(
     societyId: string,
     journeyId: string,
     userId: string,
     updates: Partial<RideOccurrence>
   ): Promise<RideOccurrence>;
-  deleteRideOccurrence(
+  /** Cancels the ride and all its pending or accepted requests atomically */
+  cancelRideWithRequests(
     societyId: string,
     journeyId: string,
-    userId: string
-  ): Promise<void>;
-  updateAvailableSeats(
-    societyId: string,
-    journeyId: string,
-    seatDelta: number
-  ): Promise<RideOccurrence>;
+    offererUserId: string,
+    reason: string
+  ): Promise<RideCancellationResult>;
 
   // Ride Requests
   createRideRequest(request: RideRequest): Promise<RideRequest>;
   getRideRequest(societyId: string, requestId: string): Promise<RideRequest | null>;
   listJourneyRequests(societyId: string, journeyId: string): Promise<RideRequest[]>;
   listUserRequests(societyId: string, userId: string): Promise<RideRequest[]>;
-  updateRequestStatus(
+  /** Offerer accepts a request; seat check and decrement are atomic */
+  acceptRideRequest(
     societyId: string,
     requestId: string,
-    status: RideRequest['status'],
+    offererUserId: string,
     note?: string
-  ): Promise<RideRequest>;
+  ): Promise<BookingResult>;
+  /** Offerer rejects or seeker cancels a request, releasing any held seats atomically */
+  closeRideRequest(
+    societyId: string,
+    requestId: string,
+    actor: { userId: string; as: 'OFFERER' | 'SEEKER' },
+    note?: string
+  ): Promise<BookingResult>;
 
   // Matches
   saveMatch(match: CommuteMatch): Promise<CommuteMatch>;

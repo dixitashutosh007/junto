@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const saved = await repo.createVehicle(vehicle);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'VEHICLE_REGISTERED',

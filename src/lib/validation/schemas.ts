@@ -7,16 +7,24 @@ export const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
 export const CreateRideSchema = z.object({
   vehicleId: z.string().min(1, 'Vehicle is required'),
   journeyDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid date YYYY-MM-DD required'),
-  departureWindowStart: z.string().min(1, 'Departure window start required'),
-  departureWindowEnd: z.string().optional(),
+  departureWindowStart: z
+    .string()
+    .max(40)
+    .refine((v) => !Number.isNaN(Date.parse(v)), 'Departure window start required'),
+  departureWindowEnd: z
+    .string()
+    .max(40)
+    .refine((v) => !Number.isNaN(Date.parse(v)), 'Valid departure window end required')
+    .optional(),
   direction: z.enum(['OUTBOUND_SOCIETY', 'INBOUND_SOCIETY']).optional().default('OUTBOUND_SOCIETY'),
-  originName: z.string().optional(),
-  originLat: z.number().optional(),
-  originLng: z.number().optional(),
-  destinationName: z.string().min(2, 'Destination name required'),
-  destinationPlaceId: z.string().optional(),
-  destinationLat: z.number().optional().default(13.05),
-  destinationLng: z.number().optional().default(77.62),
+  originName: z.string().trim().max(200).optional(),
+  originLat: z.number().min(-90).max(90).optional(),
+  originLng: z.number().min(-180).max(180).optional(),
+  destinationName: z.string().trim().min(2, 'Destination name required').max(200),
+  destinationPlaceId: z.string().max(300).optional(),
+  // Coordinates come from the place picker; there is no default destination
+  destinationLat: z.number({ error: 'Choose the destination from the suggestions list' }).min(-90).max(90),
+  destinationLng: z.number({ error: 'Choose the destination from the suggestions list' }).min(-180).max(180),
   totalSeats: z.number().int().min(1).max(6).default(2),
   genderPreference: z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']).default('ANY'),
   visibility: z.enum(['SOCIETY_WIDE', 'MATCH_ONLY']).optional().default('SOCIETY_WIDE'),
@@ -26,12 +34,12 @@ export const CreateRideSchema = z.object({
 export const CreateRideRequestSchema = z.object({
   journeyId: z.string().min(1, 'journeyId is required'),
   requestedSeats: z.number().int().min(1).max(4).default(1),
-  pickupName: z.string().optional(),
-  pickupLat: z.number().optional(),
-  pickupLng: z.number().optional(),
-  dropoffName: z.string().optional(),
-  dropoffLat: z.number().optional(),
-  dropoffLng: z.number().optional(),
+  pickupName: z.string().trim().max(200).optional(),
+  pickupLat: z.number().min(-90).max(90).optional(),
+  pickupLng: z.number().min(-180).max(180).optional(),
+  dropoffName: z.string().trim().max(200).optional(),
+  dropoffLat: z.number().min(-90).max(90).optional(),
+  dropoffLng: z.number().min(-180).max(180).optional(),
 });
 
 const GenderSchema = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']);
@@ -135,6 +143,11 @@ export const UpdateRideSchema = z.object({
 
 export const JourneyIdQuerySchema = z.object({ journeyId: IdSchema });
 
+export const CancelRideQuerySchema = z.object({
+  journeyId: IdSchema,
+  reason: z.string().trim().max(300).optional(),
+});
+
 export const RespondToRequestSchema = z.object({
   requestId: IdSchema,
   action: z.enum(['ACCEPT', 'REJECT']),
@@ -150,8 +163,8 @@ export const FindMatchesSchema = z.object({
   pickupLat: LatSchema.optional(),
   pickupLng: LngSchema.optional(),
   dropoffName: z.string().trim().max(200).optional(),
-  dropoffLat: LatSchema.optional(),
-  dropoffLng: LngSchema.optional(),
+  dropoffLat: LatSchema,
+  dropoffLng: LngSchema,
   preferredTime: IsoDateTimeSchema.optional(),
   date: DateSchema.optional(),
 });

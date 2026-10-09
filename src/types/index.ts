@@ -109,7 +109,7 @@ export interface RideSchedule {
   originLat: number;
   originLng: number;
   destinationName: string;
-  destinationPlaceId: string;
+  destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   departureWindowStart: string; // "08:00"
@@ -145,7 +145,7 @@ export interface RideOccurrence {
   originLat: number;
   originLng: number;
   destinationName: string;
-  destinationPlaceId: string;
+  destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   baselineDurationMinutes: number;

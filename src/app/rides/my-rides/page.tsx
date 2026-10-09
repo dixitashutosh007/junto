@@ -1,5 +1,6 @@
 'use client';
 
+import { formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -61,10 +62,8 @@ export default function MyRidesPage() {
     setEditingRideId(ride.id);
     setEditDest(ride.destinationName);
     setEditSeats(ride.totalSeats);
-    const startIso = ride.departureWindowStart.split('T')[1]?.substring(0, 5) || '08:00';
-    const endIso = ride.departureWindowEnd.split('T')[1]?.substring(0, 5) || '08:20';
-    setEditStart(startIso);
-    setEditEnd(endIso);
+    setEditStart(istTimeHHMM(ride.departureWindowStart));
+    setEditEnd(istTimeHHMM(ride.departureWindowEnd));
   };
 
   const handleSaveEdit = async (rideId: string, journeyDate: string) => {
@@ -81,8 +80,8 @@ export default function MyRidesPage() {
           journeyId: rideId,
           destinationName: editDest,
           totalSeats: editSeats,
-          departureWindowStart: `${journeyDate}T${editStart}:00.000Z`,
-          departureWindowEnd: `${journeyDate}T${editEnd}:00.000Z`,
+          departureWindowStart: istDateTime(journeyDate, editStart),
+          departureWindowEnd: istDateTime(journeyDate, editEnd),
         }),
       });
 
@@ -90,8 +89,11 @@ export default function MyRidesPage() {
         setMessage('Ride updated successfully!');
         setEditingRideId(null);
         loadMyRides();
-        setTimeout(() => setMessage(''), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMessage(data.error || 'Could not update this ride.');
       }
+      setTimeout(() => setMessage(''), 4000);
     } catch (e) {
       console.error(e);
     } finally {
@@ -100,7 +102,7 @@ export default function MyRidesPage() {
   };
 
   const handleDelete = async (journeyId: string) => {
-    if (!confirm('Are you sure you want to delete this offered ride?')) return;
+    if (!confirm('Cancel this ride? Residents who requested or booked seats will be notified.')) return;
     try {
       const res = await fetch(`/api/v1/rides?journeyId=${journeyId}`, {
         method: 'DELETE',
@@ -110,9 +112,13 @@ export default function MyRidesPage() {
         },
       });
       if (res.ok) {
-        setMessage('Ride deleted successfully!');
+        setMessage('Ride cancelled. Passengers have been notified.');
         loadMyRides();
         setTimeout(() => setMessage(''), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMessage(data.error || 'Could not cancel this ride.');
+        setTimeout(() => setMessage(''), 4000);
       }
     } catch (e) {
       console.error(e);
@@ -171,7 +177,7 @@ export default function MyRidesPage() {
         <div className="space-y-3.5">
           {rides.map((ride) => {
             const isEditing = editingRideId === ride.id;
-            const isToday = ride.journeyDate === new Date().toISOString().split('T')[0];
+            const isToday = ride.journeyDate === istDateString();
 
             return (
               <div
@@ -182,9 +188,9 @@ export default function MyRidesPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                      {new Date(ride.departureWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatIstTime(ride.departureWindowStart)}
                       {' – '}
-                      {new Date(ride.departureWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatIstTime(ride.departureWindowEnd)}
                     </span>
                     <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
                       {isToday ? 'Today' : ride.journeyDate}
@@ -288,22 +294,25 @@ export default function MyRidesPage() {
                         <span>Passenger Inquiries</span>
                       </Link>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => startEdit(ride)}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
-                          title="Edit Ride"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ride.id)}
-                          className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                          title="Delete Ride"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && ride.status !== 'EXPIRED' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEdit(ride)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
+                            title="Edit Ride"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(ride.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            title="Cancel Ride"
+                            aria-label="Cancel ride"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

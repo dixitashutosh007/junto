@@ -87,7 +87,7 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 
 ---
 
-## Phase 3 — Ride correctness (🟠, 2 days)
+## Phase 3 — Ride correctness (🟠, 2 days) ✅ Done
 
 | # | Task | Files |
 |---|------|-------|
@@ -100,6 +100,17 @@ Right now anyone can impersonate any user, including admins, by setting a cookie
 | 3.7 | Audit log: `orderBy('createdAt','desc').limit(100)` (add composite index) | `firestore-repository.ts` |
 
 **Done when:** concurrency test (two accepts on last seat) leaves seats ≥ 0 and exactly one ACCEPTED; time entered as 08:30 displays as 08:30.
+
+**Implementation notes:**
+- Time helpers live in `src/lib/utils/time.ts`; ride times are stored as `YYYY-MM-DDTHH:mm:00+05:30`. Verified in a browser set to New York time: 08:30 entered shows as 08:30.
+- Seat rules are pure functions in `src/lib/services/seat-booking.ts` (`planAccept`, `planClose`, `planCancelRide`). Firestore applies them inside a transaction; the mock repository applies them without awaiting in between. Ride status is `OPEN` while seats remain and `FULL` at zero.
+- New ride rules (`src/lib/services/ride-rules.ts`): departure must be in the future, on the journey date, within 7 days, and seats can't exceed the vehicle's capacity. Gender-restricted rides only where the society allows them, and enforced on request.
+- Cancelling a ride keeps it (status `CANCELLED`, with reason) and cancels and notifies every pending or accepted request.
+- Distance and duration come from the real coordinates (`estimateRoute`); rides start at the society's location unless another origin is given; the offer form must use a place from the suggestions list (it now also sends the chosen seats and gender preference, which it previously dropped).
+
+**Console steps for the owner (not code):**
+1. Deploy the index the audit log needs: `firebase deploy --only firestore:indexes`.
+2. Rides created before this release were saved with UTC times and will show 5½ hours late; cancel and re-offer any that are still upcoming, or ask for a one-off migration script.
 
 ---
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { requireAuth } from '@/lib/api-auth';
+import { errorResponse, requireAuth } from '@/lib/api-auth';
+import { istDateString } from '@/lib/utils/time';
+import { meetsGenderPreference } from '@/lib/services/ride-rules';
 import { evaluateCommuteMatch } from '@/lib/services/matching';
 import { FindMatchesSchema } from '@/lib/validation/schemas';
 import { parseBody } from '@/lib/validation/parse';
@@ -15,28 +17,34 @@ export async function POST(req: NextRequest) {
 
   const repo = getRepository();
   const society = await repo.getSocietyById(auth.societyId);
-  const maxDetour = society?.settings.max_detour_minutes ?? 10;
+  if (!society) return errorResponse('Society not found', 404);
+  const maxDetour = society.settings.max_detour_minutes;
+  const seeker = await repo.getUserById(auth.userId);
 
-  const queryDate = date || new Date().toISOString().split('T')[0];
+  const queryDate = date || istDateString();
   const openRides = await repo.listOpenRides(auth.societyId, queryDate);
 
   const matches = [];
+  const now = Date.now();
 
   for (const ride of openRides) {
     if (ride.offererUserId === auth.userId) continue;
+    if (Date.parse(ride.departureWindowStart) <= now) continue;
+    if (!seeker || !meetsGenderPreference(ride.genderPreference, seeker)) continue;
 
     const match = evaluateCommuteMatch({
       journey: ride,
       seekerUserId: auth.userId,
+      // Seekers start from the society unless they give another pickup point
       seekerPickup: {
-        name: pickupName || 'Society Gate',
-        lat: pickupLat || ride.originLat,
-        lng: pickupLng || ride.originLng,
+        name: pickupName || society.name,
+        lat: pickupLat ?? society.latitude,
+        lng: pickupLng ?? society.longitude,
       },
       seekerDropoff: {
-        name: dropoffName || 'Tech Park',
-        lat: dropoffLat || ride.destinationLat,
-        lng: dropoffLng || ride.destinationLng,
+        name: dropoffName || 'Drop-off',
+        lat: dropoffLat,
+        lng: dropoffLng,
       },
       seekerPreferredTime: preferredTime || ride.departureWindowStart,
       maxDetourMinutes: maxDetour,

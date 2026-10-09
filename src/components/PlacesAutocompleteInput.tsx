@@ -96,7 +96,8 @@ export function PlacesAutocompleteInput({
       console.warn('Place details resolution error', e);
     }
 
-    onChange(item.primaryText, item);
+    // Coordinates unknown: pass the text only so forms ask for another pick
+    onChange(item.primaryText);
   };
 
   const handleClear = () => {

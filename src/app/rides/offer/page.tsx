@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Vehicle } from '@/types';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
+import { PlaceSuggestion } from '@/lib/services/places-data';
+import { istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
   const { user, activePersona } = useAuth();
@@ -18,7 +20,9 @@ export default function OfferRidePage() {
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
   const [next7Days, setNext7Days] = useState<{ dateStr: string; label: string; weekday: string }[]>([]);
-  const [destinationName, setDestinationName] = useState('Manyata Tech Park, Hebbal');
+  const [destinationName, setDestinationName] = useState('');
+  const [destinationPlace, setDestinationPlace] = useState<PlaceSuggestion | null>(null);
+  const [formError, setFormError] = useState('');
   const [timeWindowStart, setTimeWindowStart] = useState('08:00');
   const [timeWindowEnd, setTimeWindowEnd] = useState('08:20');
   const [seats, setSeats] = useState(2);
@@ -27,30 +31,14 @@ export default function OfferRidePage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    setMinDate(todayStr);
-
-    const maxD = new Date();
-    maxD.setDate(maxD.getDate() + 7);
-    setMaxDate(maxD.toISOString().split('T')[0]);
-
-    // Build next 7 days list
-    const daysList = [];
-    for (let i = 0; i <= 7; i++) {
-      const day = new Date();
-      day.setDate(today.getDate() + i);
-      const dateStr = day.toISOString().split('T')[0];
-      const weekday = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : day.toLocaleDateString([], { weekday: 'short' });
-      const label = day.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      daysList.push({ dateStr, label, weekday });
-    }
-    setNext7Days(daysList);
+    // Ride dates are India time, whatever the device's time zone
+    const days = upcomingIstDays(7);
+    setMinDate(days[0].dateStr);
+    setMaxDate(days[days.length - 1].dateStr);
+    setNext7Days(days);
 
     // Default to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-    setJourneyDate(tomorrow.toISOString().split('T')[0]);
+    setJourneyDate(days[1].dateStr);
 
     async function loadVehicles() {
       const res = await fetch('/api/v1/user/vehicles', {
@@ -73,9 +61,19 @@ export default function OfferRidePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicleId) return;
+    setFormError('');
+
+    if (!destinationPlace) {
+      setFormError('Please choose your destination from the suggestions list.');
+      return;
+    }
+    if (timeWindowEnd < timeWindowStart) {
+      setFormError('The departure window must end after it starts.');
+      return;
+    }
 
     setIsSubmitting(true);
-    const dateStr = journeyDate || new Date().toISOString().split('T')[0];
+    const dateStr = journeyDate || next7Days[0]?.dateStr;
 
     try {
       const res = await fetch('/api/v1/rides', {
@@ -89,12 +87,20 @@ export default function OfferRidePage() {
           vehicleId: selectedVehicleId,
           journeyDate: dateStr,
           destinationName,
-          departureWindowStart: `${dateStr}T${timeWindowStart}:00.000Z`,
-          departureWindowEnd: `${dateStr}T${timeWindowEnd}:00.000Z`,
+          destinationPlaceId: destinationPlace.placeId,
+          destinationLat: destinationPlace.lat,
+          destinationLng: destinationPlace.lng,
+          departureWindowStart: istDateTime(dateStr, timeWindowStart),
+          departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
+          totalSeats: seats,
+          genderPreference: genderPref,
         }),
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || 'Could not offer this ride. Please try again.');
+      } else {
         setSuccess(true);
         setTimeout(() => {
           router.push('/');
@@ -191,7 +197,10 @@ export default function OfferRidePage() {
           {/* Destination */}
           <PlacesAutocompleteInput
             value={destinationName}
-            onChange={(val) => setDestinationName(val)}
+            onChange={(val, suggestion) => {
+              setDestinationName(val);
+              setDestinationPlace(suggestion ?? null);
+            }}
             placeholder="Search Tech Park, IT corridor, or hub..."
             label="Destination (Workplace / Hub)"
             required
@@ -283,6 +292,12 @@ export default function OfferRidePage() {
               Registration number is masked until you accept a ride request.
             </p>
           </div>
+
+          {formError && (
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+              {formError}
+            </div>
+          )}
 
           <div className="mt-auto pt-4">
             <button

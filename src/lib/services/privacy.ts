@@ -39,14 +39,13 @@ export function formatPublicJourneyView(
       ? `${nameParts[0]} ${nameParts[nameParts.length - 1].charAt(0)}.`
       : offererUser.fullName;
 
-  const resolvedFlat = currentUserRoleInJourney?.offererFlatNumber || 'Tower B-804';
 
   const offererProfile: PublicOffererProfile = {
     id: offererUser.id,
     displayName: isAcceptedParticipant ? offererUser.fullName : displayName,
     verificationBadge: 'Verified Resident',
     workLocation: offererUser.workLocationName,
-    flatNumber: isAcceptedParticipant ? resolvedFlat : undefined, // unmasked only if accepted
+    flatNumber: isAcceptedParticipant ? currentUserRoleInJourney?.offererFlatNumber : undefined, // unmasked only if accepted
     mobile: isAcceptedParticipant ? offererUser.mobile : undefined, // unmasked only if accepted
   };
 
@@ -59,7 +58,7 @@ export function formatPublicJourneyView(
   };
 
   // Compute fuel points estimate based on vehicle mileage and trip distance
-  const distanceKm = occurrence.baselineDistanceKm || 20;
+  const distanceKm = occurrence.baselineDistanceKm;
   const fuelCalc = calculateFuelSharePoints({
     distanceKm,
     mileageKmPerLitre: vehicle.mileageKmPerLitre || 15,

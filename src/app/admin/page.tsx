@@ -877,7 +877,7 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <p className="text-[10px] text-zinc-400 mt-0.5">
-                        Reported on {new Date(report.createdAt).toLocaleDateString()}
+                        Reported on {new Date(report.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </p>
                     </div>
                   </div>
