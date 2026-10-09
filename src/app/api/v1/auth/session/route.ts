@@ -70,9 +70,13 @@ export async function POST(req: NextRequest) {
       ? preferredMembership(await repo.listUserMemberships(user.id))
       : null;
     if (!invitedSociety && !existingMembership) {
-      return errorResponse(
-        "We couldn't find your society. Please use the invite link from your society to join.",
-        404
+      // The sign-in screen offers a society search next (or the invite link)
+      return NextResponse.json(
+        {
+          error: "This number isn't registered with a society yet. Find your society to request to join.",
+          needsSociety: true,
+        },
+        { status: 404 }
       );
     }
     const society = invitedSociety ?? (await repo.getSocietyById(existingMembership!.societyId));

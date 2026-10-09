@@ -13,9 +13,11 @@ import {
   toE164IndianMobile,
 } from '@/lib/firebase/phone';
 import { smsSendErrorMessage } from '@/lib/firebase/sms-errors';
-import { Phone, KeyRound, AlertCircle, Loader2 } from 'lucide-react';
+import { Phone, KeyRound, AlertCircle, Loader2, Building2 } from 'lucide-react';
+import { SocietySearch, SocietySearchResult } from '@/components/SocietySearch';
 import { User } from '@/types';
-import { clearLoggedOutFlag } from '@/context/AuthContext';
+import { clearLoggedOutFlag, useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const RECAPTCHA_CONTAINER_ID = 'recaptcha-container';
 
@@ -43,7 +45,11 @@ export function PhoneOtpModal({
   const phone =
     phoneInput ?? (defaultMobile ? (defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`) : '+91');
   const [verificationCode, setVerificationCode] = useState('');
-  const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
+  const [step, setStep] = useState<'PHONE' | 'OTP' | 'SOCIETY'>('PHONE');
+  const router = useRouter();
+  const { refreshAuth } = useAuth();
+  // A verified number with no society yet keeps its ID token to search and join one
+  const [verifiedIdToken, setVerifiedIdToken] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -127,6 +133,11 @@ export function PhoneOtpModal({
       });
 
       const sessionData = await sessionRes.json().catch(() => ({}));
+      if (sessionRes.status === 404 && sessionData.needsSociety) {
+        setVerifiedIdToken(idToken);
+        setStep('SOCIETY');
+        return;
+      }
       if (!sessionRes.ok) {
         throw new Error(sessionData.error || 'Failed to create server session');
       }
@@ -146,6 +157,27 @@ export function PhoneOtpModal({
     }
   };
 
+  // Joins the picked society as a pending member, then collects their details on its join page
+  const handleJoinSociety = async (society: SocietySearchResult) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await apiFetch('/api/v1/auth/session', {
+        method: 'POST',
+        json: { idToken: verifiedIdToken, societyCode: society.code },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not join this society. Please try again.');
+      clearLoggedOutFlag();
+      await refreshAuth();
+      onClose();
+      router.push(`/join/${encodeURIComponent(society.code)}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Could not join this society. Please try again.');
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -155,15 +187,23 @@ export function PhoneOtpModal({
 
         <div className="text-center mb-6">
           <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
-            {step === 'PHONE' ? <Phone className="w-6 h-6" /> : <KeyRound className="w-6 h-6" />}
+            {step === 'PHONE' ? (
+              <Phone className="w-6 h-6" />
+            ) : step === 'OTP' ? (
+              <KeyRound className="w-6 h-6" />
+            ) : (
+              <Building2 className="w-6 h-6" />
+            )}
           </div>
           <h2 className="text-lg font-bold text-zinc-900">
-            {step === 'PHONE' ? 'Sign in with Mobile' : 'Enter Verification Code'}
+            {step === 'PHONE' ? 'Sign in with Mobile' : step === 'OTP' ? 'Enter Verification Code' : 'Find your society'}
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-xs text-zinc-600 mt-1">
             {step === 'PHONE'
               ? 'We will send a 6-digit OTP to verify your resident identity.'
-              : `Enter the 6-digit verification code sent to ${phone}.`}
+              : step === 'OTP'
+                ? `Enter the 6-digit verification code sent to ${phone}.`
+                : 'Your number is verified but not registered with a society yet. Pick yours to request to join; a society admin will approve you.'}
           </p>
         </div>
 
@@ -213,7 +253,7 @@ export function PhoneOtpModal({
               </button>
             </div>
           </form>
-        ) : (
+        ) : step === 'OTP' ? (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
               <label htmlFor="6-digit-otp-code" className="text-xs font-bold text-slate-800 block mb-1">
@@ -249,6 +289,17 @@ export function PhoneOtpModal({
               </button>
             </div>
           </form>
+        ) : (
+          <div className="space-y-4">
+            <SocietySearch idToken={verifiedIdToken} onPick={handleJoinSociety} busy={loading} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         )}
       </div>
     </div>

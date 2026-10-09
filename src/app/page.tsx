@@ -22,6 +22,7 @@ import {
   XCircle,
   Phone,
   Repeat,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
@@ -109,8 +110,25 @@ export default function HomePage() {
 
   const firstName = user?.fullName.split(' ')[0] || 'Resident';
 
+  // Until the session check finishes, show neither the dashboard nor the sign-in screen
+  if (isLoading) {
+    return (
+      <div
+        className="flex-1 flex flex-col items-center justify-center min-h-[90vh] bg-slate-900 text-white gap-3"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+          <Car className="w-7 h-7" aria-hidden="true" />
+        </div>
+        <p className="text-sm font-bold tracking-tight">Junto RideShare</p>
+        <Loader2 className="w-5 h-5 animate-spin text-emerald-400" aria-label="Loading" />
+      </div>
+    );
+  }
+
   // Step 1: First Screen is Splash Screen flashing product and below that Login or Sign Up
-  if (!isLoading && !isAuthenticated) {
+  if (!isAuthenticated) {
     return <SplashScreen />;
   }
 

@@ -107,6 +107,10 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
           <ArrowRight className="w-4 h-4 ml-1" />
         </button>
 
+        <p className="text-[11px] text-slate-300 text-center">
+          New here? Verify your mobile, then find your society, or use your society&apos;s invite code.
+        </p>
+
         {/* Secondary Action: Join with Society Invite Code */}
         <form
           onSubmit={(e) => {
@@ -123,7 +127,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
             id="invite-code"
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
-            placeholder="New resident? Society invite code"
+            placeholder="Society invite code (optional)"
             autoCapitalize="characters"
             className="flex-1 min-w-0 py-3 px-4 rounded-2xl bg-white/10 border border-white/15 text-white placeholder:text-slate-400 text-xs font-semibold outline-none focus:border-emerald-400"
           />
