@@ -1,7 +1,7 @@
 {
-  "name": "Junto — Residential Co-commute & Community Hub",
-  "short_name": "Junto",
-  "description": "Peer-to-peer co-commute matchmaking and community network for residential societies",
+  "name": "Club House — Your Society's Community App",
+  "short_name": "Club House",
+  "description": "Private community apps for verified residents of your society, starting with RideShare",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090d16",
@@ -22,11 +22,15 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/junto-icon.svg",
+      "src": "/icons/clubhouse-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
-  "categories": ["lifestyle", "travel", "utilities"]
+  "categories": [
+    "lifestyle",
+    "travel",
+    "utilities"
+  ]
 }

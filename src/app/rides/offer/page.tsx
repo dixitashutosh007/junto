@@ -300,7 +300,7 @@ export default function OfferRidePage() {
                 <span>⛽ Fuel Sharing Advisory</span>
               </div>
               <p className="text-[10px] text-emerald-800 leading-relaxed">
-                Junto estimates fair fuel points based on your vehicle&apos;s fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
+                RideShare estimates fair fuel points based on your vehicle&apos;s fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
               </p>
             </div>
             <p className="text-[10px] text-zinc-500">

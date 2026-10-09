@@ -31,12 +31,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ rides: userRides });
   }
 
-  // Open society rides (today + upcoming)
-  const openRides = await repo.listOpenRides(auth.societyId, date);
-
   // Anonymize and format privacy views
   const userRequests = await repo.listUserRequests(auth.societyId, auth.userId);
   const requestMap = new Map(userRequests.map((r) => [r.journeyId, r.status]));
+
+  // Open society rides (today + upcoming). Rides that have already left can
+  // no longer be requested, so only their offerer and accepted riders see them.
+  const now = Date.now();
+  const openRides = (await repo.listOpenRides(auth.societyId, date)).filter(
+    (ride) =>
+      Date.parse(ride.departureWindowStart) > now ||
+      ride.offererUserId === auth.userId ||
+      requestMap.get(ride.id) === 'ACCEPTED'
+  );
 
   const publicViews = await Promise.all(
     openRides.map(async (ride) => {

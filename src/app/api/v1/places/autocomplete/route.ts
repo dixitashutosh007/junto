@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
     try {
       const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=12.9716&lon=77.5946&limit=6`;
       const osmRes = await fetch(photonUrl, {
-        headers: { 'User-Agent': 'Junto-Community-App/1.0' },
+        headers: { 'User-Agent': 'ClubHouse-Community-App/1.0' },
         signal: AbortSignal.timeout(1800), // Quick timeout so it never hangs
       });
 

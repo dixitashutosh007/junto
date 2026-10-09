@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Car,
   Search,
-  Grid,
   Check,
   Layers,
   ArrowRight,
@@ -17,6 +16,8 @@ import {
   Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ClubHouseLogo } from '@/components/ClubHouseLogo';
+import { APP_NAME } from '@/lib/brand';
 
 export function TopBarNav() {
   const {
@@ -106,7 +107,7 @@ export function TopBarNav() {
     : currentRideMode;
   const CurrentIcon = currentPersona.icon;
 
-  // Junto Product Suite
+  // Club House apps
   const societyAppsSuite = [
     {
       name: 'RideShare',
@@ -214,10 +215,11 @@ export function TopBarNav() {
           <button
             onClick={() => setAppsDrawerOpen(true)}
             className="p-2 rounded-xl text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all flex items-center gap-1.5 shadow-2xs active:scale-98 cursor-pointer"
-            title="Junto Suite"
+            title={`${APP_NAME} apps`}
+            aria-label={`${APP_NAME} apps`}
           >
-            <Grid className="w-4 h-4 text-emerald-700" />
-            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider hidden sm:inline">Junto</span>
+            <ClubHouseLogo className="w-4 h-4 text-emerald-700" />
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider hidden sm:inline">{APP_NAME}</span>
           </button>
 
           {/* Top Right: Persona Switcher */}
@@ -372,14 +374,14 @@ export function TopBarNav() {
         </div>
       </div>
 
-      {/* SocietyApps Suite Full Drawer Modal */}
+      {/* Club House apps drawer */}
       {appsDrawerOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col p-5 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
               <div className="flex items-center gap-2">
                 <Layers className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-zinc-900">Junto Community Suite</h3>
+                <h3 className="text-base font-bold text-zinc-900">{APP_NAME} apps</h3>
               </div>
               <button
                 onClick={() => setAppsDrawerOpen(false)}

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="55%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  <rect width="504" height="504" x="4" y="4" rx="124" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8" />
+  <!-- Club House mark (64-unit artwork scaled into the safe zone for maskable icons) -->
+  <g transform="translate(96 96) scale(5)" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 30 L32 12 L54 30" stroke-width="5" />
+    <path d="M16 27 V50 a3 3 0 0 0 3 3 H45 a3 3 0 0 0 3-3 V27" stroke-width="5" />
+    <circle cx="23" cy="36" r="3.5" fill="#a7f3d0" stroke="none" />
+    <circle cx="32" cy="34" r="4" fill="#ffffff" stroke="none" />
+    <circle cx="41" cy="36" r="3.5" fill="#a7f3d0" stroke="none" />
+    <path d="M17.5 47 a5.5 5 0 0 1 11 0" stroke="#a7f3d0" stroke-width="3.5" />
+    <path d="M25.5 47 a6.5 6 0 0 1 13 0" stroke-width="3.5" />
+    <path d="M35.5 47 a5.5 5 0 0 1 11 0" stroke="#a7f3d0" stroke-width="3.5" />
+  </g>
+</svg>

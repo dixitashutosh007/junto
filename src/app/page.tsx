@@ -22,11 +22,13 @@ import {
   XCircle,
   Phone,
   Repeat,
-  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
+import { RideRequestAction } from '@/components/RideRequestAction';
+import { ClubHouseLoading } from '@/components/ClubHouseLoading';
+import { APP_NAME, RIDESHARE_NAME } from '@/lib/brand';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
@@ -39,7 +41,6 @@ export default function HomePage() {
     { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [requestStatusMap, setRequestStatusMap] = useState<Record<string, string>>({});
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -88,43 +89,12 @@ export default function HomePage() {
     loadData();
   }, [activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName, reloadKey]);
 
-  const handleRequestRide = async (journeyId: string) => {
-    try {
-      const res = await apiFetch('/api/v1/rides/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          journeyId,
-          requestedSeats: 1,
-        }),
-      });
-      if (res.ok) {
-        setRequestStatusMap((prev) => ({ ...prev, [journeyId]: 'REQUESTED' }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const firstName = user?.fullName.split(' ')[0] || 'Resident';
 
   // Until the session check finishes, show neither the dashboard nor the sign-in screen
   if (isLoading) {
-    return (
-      <div
-        className="flex-1 flex flex-col items-center justify-center min-h-[90vh] bg-slate-900 text-white gap-3"
-        role="status"
-        aria-live="polite"
-      >
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
-          <Car className="w-7 h-7" aria-hidden="true" />
-        </div>
-        <p className="text-sm font-bold tracking-tight">Junto RideShare</p>
-        <Loader2 className="w-5 h-5 animate-spin text-emerald-400" aria-label="Loading" />
-      </div>
-    );
+    return <ClubHouseLoading />;
   }
 
   // Step 1: First Screen is Splash Screen flashing product and below that Login or Sign Up
@@ -254,6 +224,9 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-0.5">
+                {RIDESHARE_NAME} · {APP_NAME}
+              </p>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
                   Good morning, {firstName}
@@ -435,8 +408,8 @@ export default function HomePage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-900 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-zinc-500" />
-                    8:00 AM – 8:20 AM
+                    <Clock className="w-3 h-3 text-zinc-500" aria-hidden="true" />
+                    {formatIstTime(item.journey.departureWindowStart)} – {formatIstTime(item.journey.departureWindowEnd)}
                   </span>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-700 text-white">
                     {item.match.qualityLabel} Match
@@ -481,9 +454,7 @@ export default function HomePage() {
         ) : (
           <div className="space-y-3">
             {rides.map((ride) => {
-              const reqState = requestStatusMap[ride.id] || ride.userRequestStatus;
-              const isAccepted = reqState === 'ACCEPTED';
-              const isRequested = reqState === 'REQUESTED';
+              const isAccepted = ride.userRequestStatus === 'ACCEPTED';
 
               return (
                 <div
@@ -570,23 +541,8 @@ export default function HomePage() {
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500 font-medium">From Society Gate</span>
-                    {isAccepted ? (
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accepted
-                      </span>
-                    ) : isRequested ? (
-                      <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
-                        Request Pending
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleRequestRide(ride.id)}
-                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer"
-                      >
-                        Request Ride
-                      </button>
-                    )}
+                    <span className="text-[11px] text-slate-500 font-medium truncate mr-2">From {ride.originName}</span>
+                    <RideRequestAction ride={ride} currentUserId={user?.id} />
                   </div>
                 </div>
               );
@@ -620,7 +576,7 @@ export default function HomePage() {
           <span className="font-semibold">Community Facilitation Service</span>
         </div>
         <p className="text-[10px] text-zinc-500 leading-relaxed max-w-xs mx-auto">
-          SocietyApps connects verified co-residents travelling in compatible directions. We do not provide transportation or guarantee safety and punctuality. Residents independently verify vehicle and arrangements.
+          RideShare connects verified co-residents travelling in compatible directions. We do not provide transportation or guarantee safety and punctuality. Residents independently verify vehicle and arrangements.
         </p>
       </footer>
 

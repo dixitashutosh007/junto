@@ -21,7 +21,7 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
   }
 
   const link = isClient ? `${window.location.origin}/join/${encodeURIComponent(society.code)}` : '';
-  const message = `Join ${society.name} on Junto RideShare to share rides with neighbours: ${link}`;
+  const message = `Join ${society.name} on Club House, our society's private community app: ${link}`;
 
   const copy = async () => {
     try {
@@ -36,7 +36,7 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: `Join ${society.name} on Junto`, text: message });
+        await navigator.share({ title: `Join ${society.name} on Club House`, text: message });
       } catch {
         // dismissed
       }

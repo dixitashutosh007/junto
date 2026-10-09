@@ -23,7 +23,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
   const apps = [
     {
       id: 'rideshare',
-      title: 'Junto RideShare',
+      title: 'RideShare',
       badge: 'Active & Verified',
       icon: Car,
       color: 'from-emerald-600 to-teal-700',
@@ -86,7 +86,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
             Welcome, {firstName}
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Select a community product from the SocietyApps suite to continue:
+            Pick a Club House app to continue:
           </p>
         </div>
 
@@ -159,7 +159,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
       {/* Footer Info */}
       <div className="pt-6 text-center">
         <p className="text-[10px] text-slate-500 font-medium">
-          SocietyApps Platform · Version 1.0 Pilot for {society?.name}
+          Club House · Version 1.0 Pilot for {society?.name}
         </p>
       </div>
     </div>

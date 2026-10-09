@@ -54,6 +54,6 @@ export function calculateFuelSharePoints(params: {
     totalTripFuelCostINR,
     occupantCount: totalOccupants,
     perPassengerPoints,
-    settlementNote: 'Advisory fuel points only. Settle directly with co-resident in person (UPI / cash). Junto processes zero in-app payments.',
+    settlementNote: 'Advisory fuel points only. Settle directly with co-resident in person (UPI / cash). Club House processes zero in-app payments.',
   };
 }

@@ -52,7 +52,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
     e.preventDefault();
     if (!isLegalFullyAccepted) {
       setShowLegalModal(true);
-      setError('Please review and check all mandatory clauses in the Junto Legal Agreement popup.');
+      setError('Please review and check all mandatory clauses in the Club House Legal Agreement popup.');
       return;
     }
     setIsSubmitting(true);
@@ -227,7 +227,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-bold text-zinc-900">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Junto Legal Terms & Community Rules</span>
+                <span>Club House Legal Terms & Community Rules</span>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 isLegalFullyAccepted
@@ -303,7 +303,7 @@ function JoinSocietyForm({ params }: { params: JoinParams }) {
                   <div className="text-[11px] leading-snug">
                     <strong className="text-zinc-900 block">Clause 1: Non-Commercial Peer Matchmaking Only</strong>
                     <span className="text-zinc-600">
-                      I acknowledge that Junto is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
+                      I acknowledge that Club House is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
                     </span>
                   </div>
                 </label>

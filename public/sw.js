@@ -1,11 +1,12 @@
-// Junto service worker: installable PWA, offline fallback page and web push.
+// Club House service worker: installable PWA, offline fallback page and web push.
 //
 // Caching is deliberately narrow. Pages and API responses contain private
 // resident data, so they are never cached: navigations always go to the
 // network and fall back to a static offline page. Only build assets with
 // hashed (immutable) URLs and a few public files are cached.
 
-const CACHE_NAME = 'junto-v2';
+// Bump the version whenever a precached file changes so phones pick it up
+const CACHE_NAME = 'clubhouse-v3';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [OFFLINE_URL, '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 
@@ -67,7 +68,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Junto', {
+    self.registration.showNotification(data.title || 'Club House', {
       body: data.body || 'You have an update about your ride.',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

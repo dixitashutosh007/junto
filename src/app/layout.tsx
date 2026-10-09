@@ -19,13 +19,13 @@ const geistMono = Geist_Mono({
 import React, { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Junto — Residential Co-commute & Community Hub",
-  description: "Peer-to-peer co-commute matchmaking and community network for residential societies",
+  title: "Club House — Your Society's Community App",
+  description: "Private community apps for verified residents of your society, starting with RideShare",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Junto",
+    title: "Club House",
   },
   icons: {
     icon: "/icons/icon-192.png",
