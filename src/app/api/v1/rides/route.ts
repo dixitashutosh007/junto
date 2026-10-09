@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   } = body;
 
   const windowEnd = departureWindowEnd || departureWindowStart;
-  const windowError = validateDepartureWindow(journeyDate, departureWindowStart, windowEnd);
+  const windowError = validateDepartureWindow(journeyDate, departureWindowStart, departureWindowEnd);
   if (windowError) return errorResponse(windowError);
 
   const repo = getRepository();

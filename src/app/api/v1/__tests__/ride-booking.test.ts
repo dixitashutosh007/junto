@@ -79,6 +79,7 @@ describe('3.1 times are India time', () => {
     ['a departure time in the past', { journeyDate: istDateString(), departureWindowStart: '2020-01-01T08:00:00+05:30', departureWindowEnd: undefined }],
     ['times on a different date', { departureWindowStart: istDateTime(addDays(tomorrow(), 1), '08:30'), departureWindowEnd: undefined }],
     ['an end before the start', { departureWindowEnd: istDateTime(tomorrow(), '08:00') }],
+    ['an end equal to the start', { departureWindowEnd: istDateTime(tomorrow(), '08:30') }],
     ['a date too far ahead', { journeyDate: addDays(istDateString(), 30), departureWindowStart: istDateTime(addDays(istDateString(), 30), '08:30'), departureWindowEnd: undefined }],
     ['more seats than the vehicle has', { totalSeats: 6 }],
   ])('rejects %s', async (_name, overrides) => {
